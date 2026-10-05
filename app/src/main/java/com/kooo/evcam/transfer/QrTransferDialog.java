@@ -96,7 +96,7 @@ public class QrTransferDialog extends Dialog {
         super(context);
         this.filesToTransfer = files;
         if (files == null || files.isEmpty()) {
-            throw new IllegalArgumentException("文件列表不能为空");
+            throw new IllegalArgumentException("File list is empty");
         }
     }
 
@@ -201,7 +201,7 @@ public class QrTransferDialog extends Dialog {
                 }
             }
             
-            Toast.makeText(getContext(), "已刷新 IP 列表", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "IP list refreshed", Toast.LENGTH_SHORT).show();
         });
 
         btnStopServer.setOnClickListener(v -> {
@@ -216,7 +216,7 @@ public class QrTransferDialog extends Dialog {
                 ClipboardManager clipboard = (ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
                 ClipData clip = ClipData.newPlainText("EVCam URL", url);
                 clipboard.setPrimaryClip(clip);
-                Toast.makeText(getContext(), "URL 已复制到剪贴板", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "URL copied to clipboard", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -297,7 +297,7 @@ public class QrTransferDialog extends Dialog {
 
         // 如果没有找到任何 IP，添加默认地址
         if (availableIps.isEmpty()) {
-            availableIps.add(new IpAddressInfo("192.168.43.1", "热点默认", "hotspot"));
+            availableIps.add(new IpAddressInfo("192.168.43.1", "Hotspot default", "hotspot"));
         }
 
         // 更新 Spinner
@@ -313,11 +313,11 @@ public class QrTransferDialog extends Dialog {
      * 获取接口描述
      */
     private String getInterfaceDescription(String interfaceName) {
-        if (interfaceName.startsWith("wlan")) return "WiFi热点";
-        if (interfaceName.startsWith("ap")) return "热点";
-        if (interfaceName.startsWith("p2p")) return "WiFi直连";
-        if (interfaceName.startsWith("eth")) return "以太网";
-        if (interfaceName.startsWith("usb")) return "USB网络";
+        if (interfaceName.startsWith("wlan")) return "WiFi hotspot";
+        if (interfaceName.startsWith("ap")) return "Hotspot";
+        if (interfaceName.startsWith("p2p")) return "WiFi Direct";
+        if (interfaceName.startsWith("eth")) return "Ethernet";
+        if (interfaceName.startsWith("usb")) return "USB network";
         return interfaceName;
     }
 
@@ -342,7 +342,7 @@ public class QrTransferDialog extends Dialog {
         if (qrBitmap != null) {
             qrCodeImage.setImageBitmap(qrBitmap);
             qrLoading.setVisibility(View.GONE);
-            serverStatus.setText("服务器: " + ip + ":" + currentPort);
+            serverStatus.setText("Server: " + ip + ":" + currentPort);
         }
     }
 
@@ -374,7 +374,7 @@ public class QrTransferDialog extends Dialog {
                         if (isDestructionStarted()) return;
                         currentPort = port;
                         transferStatus.setVisibility(View.VISIBLE);
-                        transferStatus.setText("等待连接...");
+                        transferStatus.setText("Waiting for connection...");
 
                         AppLog.i("QrTransferDialog", "服务器已启动在端口: " + port + ", QR URL: " + qrUrl);
 
@@ -405,7 +405,7 @@ public class QrTransferDialog extends Dialog {
                 mainHandler.post(() -> {
                     try {
                         if (isDestructionStarted()) return;
-                        serverStatus.setText("服务器已停止");
+                        serverStatus.setText("Server stopped");
                     } catch (Exception e) {
                         AppLog.e("QrTransferDialog", "onServerStopped 回调异常", e);
                     }
@@ -417,8 +417,8 @@ public class QrTransferDialog extends Dialog {
                 mainHandler.post(() -> {
                     try {
                         if (isDestructionStarted()) return;
-                        transferStatus.setText("正在传输: " + fileName);
-                        updateFileStatus(fileName, "传输中...");
+                        transferStatus.setText("Transferring: " + fileName);
+                        updateFileStatus(fileName, "Transferring...");
                     } catch (Exception e) {
                         AppLog.e("QrTransferDialog", "onFileRequested 回调异常", e);
                     }
@@ -431,11 +431,11 @@ public class QrTransferDialog extends Dialog {
                     try {
                         if (isDestructionStarted()) return;
                         if (success) {
-                            transferStatus.setText("传输完成: " + fileName);
-                            updateFileStatus(fileName, "完成");
+                            transferStatus.setText("Transfer complete: " + fileName);
+                            updateFileStatus(fileName, "Done");
                         } else {
-                            transferStatus.setText("传输失败: " + fileName);
-                            updateFileStatus(fileName, "失败");
+                            transferStatus.setText("Transfer failed: " + fileName);
+                            updateFileStatus(fileName, "Failed");
                         }
                     } catch (Exception e) {
                         AppLog.e("QrTransferDialog", "onFileTransferred 回调异常", e);
@@ -448,7 +448,7 @@ public class QrTransferDialog extends Dialog {
                 mainHandler.post(() -> {
                     try {
                         if (isDestructionStarted()) return;
-                        serverStatus.setText("错误: " + error);
+                        serverStatus.setText("Error: " + error);
                         qrLoading.setVisibility(View.GONE);
                         Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
                     } catch (Exception e) {
@@ -472,9 +472,9 @@ public class QrTransferDialog extends Dialog {
             AppLog.i("QrTransferDialog", "服务器启动成功");
         } catch (Exception e) {
             AppLog.e("QrTransferDialog", "服务器启动失败", e);
-            serverStatus.setText("启动服务器失败");
+            serverStatus.setText("Failed to start server");
             qrLoading.setVisibility(View.GONE);
-            Toast.makeText(getContext(), "无法启动文件传输服务器: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(getContext(), "Cannot start file transfer server: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -504,13 +504,13 @@ public class QrTransferDialog extends Dialog {
     @Override
     public void onBackPressed() {
         new MaterialAlertDialogBuilder(getContext())
-                .setTitle("确认关闭")
-                .setMessage("关闭后将停止文件传输，是否继续？")
-                .setPositiveButton("停止传输", (dialog, which) -> {
+                .setTitle("Confirm close")
+                .setMessage("Closing will stop the file transfer. Continue?")
+                .setPositiveButton("Stop transfer", (dialog, which) -> {
                     stopServer();
                     super.onBackPressed();
                 })
-                .setNegativeButton("继续传输", null)
+                .setNegativeButton("Continue transfer", null)
                 .show();
     }
 
@@ -527,7 +527,7 @@ public class QrTransferDialog extends Dialog {
             this.files = files;
             this.statuses = new ArrayList<>();
             for (int i = 0; i < files.size(); i++) {
-                statuses.add("等待");
+                statuses.add("Wait");
             }
         }
 
@@ -571,9 +571,9 @@ public class QrTransferDialog extends Dialog {
 
             // 根据状态设置颜色
             String status = statuses.get(position);
-            if ("完成".equals(status)) {
+            if ("Done".equals(status)) {
                 fileStatus.setTextColor(0xFF4CAF50); // 绿色
-            } else if ("失败".equals(status)) {
+            } else if ("Failed".equals(status)) {
                 fileStatus.setTextColor(0xFFD32F2F); // 红色
             } else {
                 fileStatus.setTextColor(0xFF1976D2); // 蓝色

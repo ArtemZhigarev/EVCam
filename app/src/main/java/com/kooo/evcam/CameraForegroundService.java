@@ -202,10 +202,18 @@ public class CameraForegroundService extends Service {
         String content = intent != null ? intent.getStringExtra("content") : null;
 
         if (title == null) {
-            title = "摄像头服务运行中";
+            title = "Camera service running";
         }
         if (content == null) {
-            content = "正在处理远程拍照/录制请求";
+            content = "Processing remote photo/recording request";
+        }
+
+        // AppsForMyCar: the keep-alive triggers restart this service with their own text ("EVCam
+        // running in background"); while a recording is running the notification keeps saying so.
+        MultiCameraManager recordingManager = com.kooo.evcam.camera.CameraManagerHolder.getInstance().getCameraManager();
+        if (recordingManager != null && recordingManager.isRecording()) {
+            title = "EVCam is recording";
+            content = "Tap to open EVCam";
         }
 
         // 创建通知
@@ -329,7 +337,7 @@ public class CameraForegroundService extends Service {
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 try {
                     AppLog.d(TAG, "执行延迟重启...");
-                    start(getApplicationContext(), "EVCam", "服务自动重启");
+                    start(getApplicationContext(), "EVCam", "Auto restart service");
                 } catch (Exception e) {
                     AppLog.e(TAG, "延迟重启失败: " + e.getMessage(), e);
                 }
@@ -355,10 +363,10 @@ public class CameraForegroundService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "摄像头服务",
+                    "Camera service",
                     NotificationManager.IMPORTANCE_LOW
             );
-            channel.setDescription("用于后台拍照和录制");
+            channel.setDescription("Used for background photos and recording");
             channel.setShowBadge(false);
 
             NotificationManager manager = getSystemService(NotificationManager.class);

@@ -1,0 +1,116 @@
+[
+ {
+  "file": "java/com/kooo/evcam/playback/DateSection.java",
+  "find": "Locale.CHINESE",
+  "replace": "Locale.ENGLISH",
+  "why": "month and weekday names in the playback list were Chinese"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/DateSection.java",
+  "find": "\"今天\".equals(dateDisplay) || \"昨天\".equals(dateDisplay) || \"前天\".equals(dateDisplay)",
+  "replace": "\"Today\".equals(dateDisplay) || \"Yesterday\".equals(dateDisplay) || \"2 days ago\".equals(dateDisplay)",
+  "why": "matches the app's own (translated) date labels"
+ },
+ {
+  "file": "java/com/kooo/evcam/transfer/QrTransferDialog.java",
+  "find": "\"完成\".equals(status)",
+  "replace": "\"Done\".equals(status)",
+  "why": "matches the app's own (translated) transfer status: green when done"
+ },
+ {
+  "file": "java/com/kooo/evcam/transfer/QrTransferDialog.java",
+  "find": "\"失败\".equals(status)",
+  "replace": "\"Failed\".equals(status)",
+  "why": "matches the app's own (translated) transfer status: red when failed"
+ },
+ {
+  "file": "java/com/kooo/evcam/SettingsFragment.java",
+  "find": "\"下载已取消\".equals(error)",
+  "replace": "\"Download cancelled\".equals(error)",
+  "why": "matches VersionUpdateManager's (translated) message, so a cancelled download shows no error"
+ },
+ {
+  "file": "java/com/kooo/evcam/MainActivity.java",
+  "find": "status.contains(\"错误\") || status.contains(\"断开\")",
+  "replace": "status.contains(\"Error\") || status.contains(\"disconnected\")",
+  "why": "matches MultiCameraManager's (translated) camera status text"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/PlaybackFragmentNew.java",
+  "find": ".replace(\"摄\", \"\")",
+  "replace": ".replace(\" cam\", \"\")",
+  "why": "turns the menu label 'Front cam' back into 'Front'"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/PlaybackFragmentNew.java",
+  "find": "label + \"Cam\"",
+  "replace": "label + \" cam\"",
+  "why": "glued phrase: 'FrontCam'"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/PhotoPlaybackFragmentNew.java",
+  "find": "label + \"Cam\"",
+  "replace": "label + \" cam\"",
+  "why": "glued phrase: 'FrontCam'"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/PlaybackFragmentNew.java",
+  "find": "\"📤 Share only\" + positionName + \"Video\"",
+  "replace": "\"📤 Share only the \" + positionName.toLowerCase() + \" video\"",
+  "why": "glued phrase: 'Share onlyFront viewVideo'"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/ExpandableVideoGroupAdapter.java",
+  "find": "section.getItemCount() + \"Group\"",
+  "replace": "section.getItemCount() + (section.getItemCount() == 1 ? \" group\" : \" groups\")",
+  "why": "glued phrase: '3Group'"
+ },
+ {
+  "file": "java/com/kooo/evcam/playback/ExpandablePhotoGroupAdapter.java",
+  "find": "section.getItemCount() + \"Group\"",
+  "replace": "section.getItemCount() + (section.getItemCount() == 1 ? \" group\" : \" groups\")",
+  "why": "glued phrase: '3Group'"
+ },
+ {
+  "file": "java/com/kooo/evcam/MainActivity.java",
+  "find": "? \"All\" : cameraCount + \" items\";",
+  "replace": "? \"all cameras\" : cameraCount + (cameraCount == 1 ? \" camera\" : \" cameras\");",
+  "why": "glued phrase, see the next entry"
+ },
+ {
+  "file": "java/com/kooo/evcam/MainActivity.java",
+  "find": "\"Start recording\" + cameraText + \"Camera\"",
+  "replace": "\"Recording \" + cameraText",
+  "why": "glued phrase: 'Start recordingAllCamera'"
+ },
+ {
+  "file": "java/com/kooo/evcam/AppConfig.java",
+  "find": "return \"Position\" + index;",
+  "replace": "return \"Position \" + index;",
+  "why": "glued phrase: 'Position1'"
+ },
+ {
+  "file": "java/com/kooo/evcam/SettingsFragment.java",
+  "find": "\"Received by the author\" + logType + \"Log\"",
+  "replace": "\"Log sent to the author (\" + logType.toLowerCase() + \")\"",
+  "why": "glued phrase: 'Received by the authorLast runLog'"
+ },
+ {
+  "file": "java/com/kooo/evcam/StorageCleanupManager.java",
+  "find": "\"Internal storage low, cleaned up\" + typeName + \" \" +",
+  "replace": "\"Internal storage low, deleted \" + typeName.toLowerCase() + \": \" +",
+  "why": "glued phrase: 'cleaned upVideo 12 files'"
+ },
+ {
+  "file": "java/com/kooo/evcam/StorageCleanupManager.java",
+  "find": "\"Cleaned up\" + typeName + \": delete \"",
+  "replace": "\"Cleaned up \" + typeName.toLowerCase() + \": deleted \"",
+  "why": "glued phrase: 'Cleaned upVideo: delete 3 files'"
+ },
+ {
+  "file": "java/com/kooo/evcam/TransparentBootActivity.java",
+  "find": "\"Start when the car starts\"",
+  "replace": "\"EVCam started with the car\"",
+  "why": "here the setting's name is used as a notification title"
+ }
+]

@@ -141,7 +141,7 @@ public class VersionUpdateManager {
     public void checkUpdate(UpdateCheckCallback callback) {
         String baseUrl = getBaseUrl();
         if (baseUrl == null) {
-            mainHandler.post(() -> callback.onError("未配置更新服务器地址"));
+            mainHandler.post(() -> callback.onError("Update server address not set"));
             return;
         }
         
@@ -157,7 +157,7 @@ public class VersionUpdateManager {
             @Override
             public void onFailure(Call call, IOException e) {
                 AppLog.e(TAG, "版本检查失败: " + e.getMessage());
-                mainHandler.post(() -> callback.onError("网络错误: " + e.getMessage()));
+                mainHandler.post(() -> callback.onError("Network error: " + e.getMessage()));
             }
             
             @Override
@@ -165,13 +165,13 @@ public class VersionUpdateManager {
                 try {
                     if (!response.isSuccessful()) {
                         AppLog.e(TAG, "版本检查失败，HTTP 状态码: " + response.code());
-                        mainHandler.post(() -> callback.onError("服务器错误: " + response.code()));
+                        mainHandler.post(() -> callback.onError("Server error: " + response.code()));
                         return;
                     }
                     
                     ResponseBody body = response.body();
                     if (body == null) {
-                        mainHandler.post(() -> callback.onError("服务器返回空响应"));
+                        mainHandler.post(() -> callback.onError("Server returned empty response"));
                         return;
                     }
                     
@@ -180,7 +180,7 @@ public class VersionUpdateManager {
                     
                     // 验证版本号格式
                     if (!isValidVersionFormat(remoteVersion)) {
-                        mainHandler.post(() -> callback.onError("无效的版本号格式: " + remoteVersion));
+                        mainHandler.post(() -> callback.onError("Invalid version format: " + remoteVersion));
                         return;
                     }
                     
@@ -206,7 +206,7 @@ public class VersionUpdateManager {
     public void downloadApk(String newVersion, DownloadCallback callback) {
         String baseUrl = getBaseUrl();
         if (baseUrl == null) {
-            mainHandler.post(() -> callback.onError("未配置更新服务器地址"));
+            mainHandler.post(() -> callback.onError("Update server address not set"));
             return;
         }
         
@@ -227,10 +227,10 @@ public class VersionUpdateManager {
                 currentDownloadCall = null;
                 if (call.isCanceled()) {
                     AppLog.d(TAG, "下载已取消");
-                    mainHandler.post(() -> callback.onError("下载已取消"));
+                    mainHandler.post(() -> callback.onError("Download cancelled"));
                 } else {
                     AppLog.e(TAG, "下载失败: " + e.getMessage());
-                    mainHandler.post(() -> callback.onError("下载失败: " + e.getMessage()));
+                    mainHandler.post(() -> callback.onError("Download failed: " + e.getMessage()));
                 }
             }
             
@@ -240,14 +240,14 @@ public class VersionUpdateManager {
                 
                 if (!response.isSuccessful()) {
                     AppLog.e(TAG, "下载失败，HTTP 状态码: " + response.code());
-                    mainHandler.post(() -> callback.onError("服务器错误: " + response.code()));
+                    mainHandler.post(() -> callback.onError("Server error: " + response.code()));
                     response.close();
                     return;
                 }
                 
                 ResponseBody body = response.body();
                 if (body == null) {
-                    mainHandler.post(() -> callback.onError("服务器返回空响应"));
+                    mainHandler.post(() -> callback.onError("Server returned empty response"));
                     return;
                 }
                 
@@ -305,7 +305,7 @@ public class VersionUpdateManager {
                     
                 } catch (IOException e) {
                     AppLog.e(TAG, "保存文件失败: " + e.getMessage());
-                    mainHandler.post(() -> callback.onError("保存文件失败: " + e.getMessage()));
+                    mainHandler.post(() -> callback.onError("Failed to save file: " + e.getMessage()));
                 } finally {
                     response.close();
                 }

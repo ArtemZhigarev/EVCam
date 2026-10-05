@@ -385,6 +385,8 @@ public class AppConfig {
     public AppConfig(Context context) {
         this.context = context.getApplicationContext();
         this.prefs = this.context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+        // AppsForMyCar fork: Geely EX2 defaults (camera setup on a fresh install, background recording).
+        AfmcGeelyEx2Defaults.apply(this.context, this.prefs);
     }
     
     // ==================== 首次启动相关方法 ====================
@@ -696,12 +698,12 @@ public class AppConfig {
     public static String getBitrateLevelDisplayName(String level) {
         switch (level) {
             case BITRATE_LOW:
-                return "低";
+                return "Low";
             case BITRATE_HIGH:
-                return "高";
+                return "High";
             case BITRATE_MEDIUM:
             default:
-                return "标准";
+                return "Standard";
         }
     }
     
@@ -789,9 +791,9 @@ public class AppConfig {
      */
     public static String getFramerateLevelDisplayName(String level) {
         if (FRAMERATE_LOW.equals(level)) {
-            return "低";
+            return "Low";
         }
-        return "标准";
+        return "Standard";
     }
     
     // ==================== 车型配置相关方法 ====================
@@ -1010,7 +1012,7 @@ public class AppConfig {
                 key = KEY_CAMERA_RIGHT_NAME;
                 break;
             default:
-                return "未知";
+                return "Unknown";
         }
         return prefs.getString(key, defaultValue);
     }
@@ -1025,15 +1027,15 @@ public class AppConfig {
         // 默认名称（适用于大多数预设车型）
         switch (position) {
             case "front":
-                return "前";
+                return "Front";
             case "back":
-                return "后";
+                return "Back";
             case "left":
-                return "左";
+                return "Left";
             case "right":
-                return "右";
+                return "Right";
             default:
-                return "未知";
+                return "Unknown";
         }
     }
 
@@ -2718,7 +2720,7 @@ public class AppConfig {
         String name = getCameraName(position);
         // 如果名称为空或仅为空白，使用位置名称
         if (name == null || name.trim().isEmpty()) {
-            return "位置" + index;
+            return "Position " + index;
         }
         return name;
     }
@@ -2882,16 +2884,16 @@ public class AppConfig {
      */
     public static String getAwbModeDisplayName(int mode) {
         switch (mode) {
-            case AWB_MODE_DEFAULT: return "默认";
-            case AWB_MODE_AUTO: return "自动";
-            case AWB_MODE_INCANDESCENT: return "白炽灯";
-            case AWB_MODE_FLUORESCENT: return "荧光灯";
-            case AWB_MODE_WARM_FLUORESCENT: return "暖荧光灯";
-            case AWB_MODE_DAYLIGHT: return "日光";
-            case AWB_MODE_CLOUDY_DAYLIGHT: return "阴天";
-            case AWB_MODE_TWILIGHT: return "黄昏";
-            case AWB_MODE_SHADE: return "阴影";
-            default: return "未知";
+            case AWB_MODE_DEFAULT: return "Default";
+            case AWB_MODE_AUTO: return "Auto";
+            case AWB_MODE_INCANDESCENT: return "Incandescent";
+            case AWB_MODE_FLUORESCENT: return "Fluorescent";
+            case AWB_MODE_WARM_FLUORESCENT: return "Warm fluorescent";
+            case AWB_MODE_DAYLIGHT: return "Daylight";
+            case AWB_MODE_CLOUDY_DAYLIGHT: return "Cloudy";
+            case AWB_MODE_TWILIGHT: return "Dusk";
+            case AWB_MODE_SHADE: return "Shadow";
+            default: return "Unknown";
         }
     }
     
@@ -2900,11 +2902,11 @@ public class AppConfig {
      */
     public static String getTonemapModeDisplayName(int mode) {
         switch (mode) {
-            case TONEMAP_MODE_DEFAULT: return "默认";
-            case TONEMAP_MODE_CONTRAST_CURVE: return "对比度曲线";
-            case TONEMAP_MODE_FAST: return "快速";
-            case TONEMAP_MODE_HIGH_QUALITY: return "高质量";
-            default: return "未知";
+            case TONEMAP_MODE_DEFAULT: return "Default";
+            case TONEMAP_MODE_CONTRAST_CURVE: return "Contrast curve";
+            case TONEMAP_MODE_FAST: return "Fast";
+            case TONEMAP_MODE_HIGH_QUALITY: return "High quality";
+            default: return "Unknown";
         }
     }
     
@@ -2913,11 +2915,11 @@ public class AppConfig {
      */
     public static String getEdgeModeDisplayName(int mode) {
         switch (mode) {
-            case EDGE_MODE_DEFAULT: return "默认";
-            case EDGE_MODE_OFF: return "关闭";
-            case EDGE_MODE_FAST: return "快速";
-            case EDGE_MODE_HIGH_QUALITY: return "高质量";
-            default: return "未知";
+            case EDGE_MODE_DEFAULT: return "Default";
+            case EDGE_MODE_OFF: return "Close";
+            case EDGE_MODE_FAST: return "Fast";
+            case EDGE_MODE_HIGH_QUALITY: return "High quality";
+            default: return "Unknown";
         }
     }
     
@@ -2926,11 +2928,11 @@ public class AppConfig {
      */
     public static String getNoiseReductionModeDisplayName(int mode) {
         switch (mode) {
-            case NOISE_REDUCTION_DEFAULT: return "默认";
-            case NOISE_REDUCTION_OFF: return "关闭";
-            case NOISE_REDUCTION_FAST: return "快速";
-            case NOISE_REDUCTION_HIGH_QUALITY: return "高质量";
-            default: return "未知";
+            case NOISE_REDUCTION_DEFAULT: return "Default";
+            case NOISE_REDUCTION_OFF: return "Close";
+            case NOISE_REDUCTION_FAST: return "Fast";
+            case NOISE_REDUCTION_HIGH_QUALITY: return "High quality";
+            default: return "Unknown";
         }
     }
     
@@ -2939,14 +2941,14 @@ public class AppConfig {
      */
     public static String getEffectModeDisplayName(int mode) {
         switch (mode) {
-            case EFFECT_MODE_DEFAULT: return "默认";
-            case EFFECT_MODE_OFF: return "关闭";
-            case EFFECT_MODE_MONO: return "黑白";
-            case EFFECT_MODE_NEGATIVE: return "负片";
-            case EFFECT_MODE_SOLARIZE: return "曝光过度";
-            case EFFECT_MODE_SEPIA: return "怀旧";
-            case EFFECT_MODE_AQUA: return "水蓝";
-            default: return "未知";
+            case EFFECT_MODE_DEFAULT: return "Default";
+            case EFFECT_MODE_OFF: return "Close";
+            case EFFECT_MODE_MONO: return "Mono";
+            case EFFECT_MODE_NEGATIVE: return "Negative";
+            case EFFECT_MODE_SOLARIZE: return "Overexposed";
+            case EFFECT_MODE_SEPIA: return "Retro";
+            case EFFECT_MODE_AQUA: return "Aqua";
+            default: return "Unknown";
         }
     }
     
@@ -3056,9 +3058,9 @@ public class AppConfig {
      */
     public static String getButtonStyleDisplayName(String style) {
         if (BUTTON_STYLE_MULTI.equals(style)) {
-            return "多按钮";
+            return "Multi-button";
         }
-        return "标准";
+        return "Standard";
     }
     
     /**
@@ -3066,9 +3068,9 @@ public class AppConfig {
      */
     public static String getButtonOrientationDisplayName(String orientation) {
         if (BUTTON_ORIENTATION_VERTICAL.equals(orientation)) {
-            return "竖版";
+            return "Portrait";
         }
-        return "横版";
+        return "Landscape";
     }
     
     // ==================== 版本更新配置相关方法 ====================

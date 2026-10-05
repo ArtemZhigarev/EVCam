@@ -400,7 +400,7 @@ public class MultiCameraManager {
             public void onCameraOpened(String cameraId) {
                 AppLog.d(TAG, "Callback: Camera " + cameraId + " opened");
                 if (statusCallback != null) {
-                    statusCallback.onCameraStatusUpdate(cameraId, "已打开");
+                    statusCallback.onCameraStatusUpdate(cameraId, "Opened");
                 }
             }
 
@@ -408,7 +408,7 @@ public class MultiCameraManager {
             public void onCameraConfigured(String cameraId) {
                 AppLog.d(TAG, "Callback: Camera " + cameraId + " configured");
                 if (statusCallback != null) {
-                    statusCallback.onCameraStatusUpdate(cameraId, "预览已启动");
+                    statusCallback.onCameraStatusUpdate(cameraId, "Preview started");
                 }
 
                 // 检查是否有录制器正在等待会话重新配置（分段切换）
@@ -475,7 +475,7 @@ public class MultiCameraManager {
             public void onCameraClosed(String cameraId) {
                 AppLog.d(TAG, "Callback: Camera " + cameraId + " closed");
                 if (statusCallback != null) {
-                    statusCallback.onCameraStatusUpdate(cameraId, "已关闭");
+                    statusCallback.onCameraStatusUpdate(cameraId, "Off");
                 }
             }
 
@@ -484,7 +484,7 @@ public class MultiCameraManager {
                 String errorMsg = getErrorMessage(errorCode);
                 AppLog.e(TAG, "Callback: Camera " + cameraId + " error: " + errorCode + " - " + errorMsg);
                 if (statusCallback != null) {
-                    statusCallback.onCameraStatusUpdate(cameraId, "错误: " + errorMsg);
+                    statusCallback.onCameraStatusUpdate(cameraId, "Error: " + errorMsg);
                 }
 
                 // 如果在等待会话配置期间发生错误，减少期望计数（线程安全处理）
@@ -678,25 +678,25 @@ public class MultiCameraManager {
     private String getErrorMessage(int errorCode) {
         switch (errorCode) {
             case 1: // ERROR_CAMERA_IN_USE
-                return "摄像头正在被使用";
+                return "Camera in use";
             case 2: // ERROR_MAX_CAMERAS_IN_USE
-                return "已达到最大摄像头数量";
+                return "Maximum number of cameras reached";
             case 3: // ERROR_CAMERA_DISABLED
-                return "摄像头被禁用";
+                return "Camera disabled";
             case 4: // ERROR_CAMERA_DEVICE
-                return "摄像头设备错误(资源不足?)";
+                return "Camera device error (low resources?)";
             case 5: // ERROR_CAMERA_SERVICE
-                return "摄像头服务错误";
+                return "Camera service error";
             case -1:
-                return "访问失败";
+                return "Access failed";
             case -2:
-                return "权限不足";
+                return "Insufficient permissions";
             case -3:
-                return "会话配置失败";
+                return "Session configuration failed";
             case -4:
-                return "摄像头断开连接(资源耗尽)";
+                return "Camera disconnected (out of resources)";
             default:
-                return "未知错误(" + errorCode + ")";
+                return "Unknown error(" + errorCode + ")";
         }
     }
 
@@ -2316,7 +2316,7 @@ public class MultiCameraManager {
     public String getDebugStats() {
         StringBuilder sb = new StringBuilder();
         String[] order = {"front", "back", "left", "right"};
-        String[] labels = {"前", "后", "左", "右"};
+        String[] labels = {"Front", "Back", "Left", "Right"};
         for (int i = 0; i < order.length; i++) {
             SingleCamera camera = cameras.get(order[i]);
             if (camera == null) continue;
@@ -2345,11 +2345,11 @@ public class MultiCameraManager {
                 sb.append("\n");
             }
             
-            sb.append(key).append(" (摄像头").append(cameraId).append("): ");
+            sb.append(key).append(" (camera").append(cameraId).append("): ");
             if (previewSize != null) {
                 sb.append(previewSize.getWidth()).append("×").append(previewSize.getHeight());
             } else {
-                sb.append("未初始化");
+                sb.append("Not initialised");
             }
         }
         return sb.toString();

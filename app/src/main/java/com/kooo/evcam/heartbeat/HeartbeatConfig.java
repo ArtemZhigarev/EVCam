@@ -243,13 +243,13 @@ public class HeartbeatConfig {
     public static String getTargetSizeDisplayName(int sizeKB) {
         switch (sizeKB) {
             case TARGET_SIZE_100KB:
-                return "100KB（省流量）";
+                return "100KB (saves data)";
             case TARGET_SIZE_500KB:
                 return "500KB";
             case TARGET_SIZE_1MB:
                 return "1MB";
             case TARGET_SIZE_NO_COMPRESS:
-                return "不压缩（原图质量）";
+                return "No compression (original quality)";
             default:
                 return sizeKB + "KB";
         }
@@ -391,12 +391,12 @@ public class HeartbeatConfig {
      */
     public String getConfigStatus() {
         if (!hasServerUrl()) {
-            return "请配置服务器地址";
+            return "Configure server address";
         }
         if (!hasSecretKey()) {
-            return "请配置通信密钥";
+            return "Configure secret key";
         }
-        return "配置完成";
+        return "Setup complete";
     }
     
     // ==================== 间隔显示名称 ====================
@@ -407,15 +407,15 @@ public class HeartbeatConfig {
     public static String getIntervalDisplayName(int seconds) {
         switch (seconds) {
             case INTERVAL_30_SECONDS:
-                return "30秒";
+                return "30 s";
             case INTERVAL_60_SECONDS:
-                return "1分钟（推荐）";
+                return "1 min (recommended)";
             case INTERVAL_120_SECONDS:
-                return "2分钟";
+                return "2 min";
             case INTERVAL_300_SECONDS:
-                return "5分钟";
+                return "5 min";
             default:
-                return seconds + "秒";
+                return seconds + "s";
         }
     }
 }

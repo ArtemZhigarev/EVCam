@@ -71,7 +71,7 @@ public class FeishuApiClient {
             AppLog.d(TAG, "Access Token 响应: " + responseBody);
 
             if (!response.isSuccessful()) {
-                throw new IOException("获取 Access Token 失败: " + response.code() + " - " + responseBody);
+                throw new IOException("Could not get access token: " + response.code() + " - " + responseBody);
             }
 
             JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
@@ -80,7 +80,7 @@ public class FeishuApiClient {
             int code = jsonResponse.has("code") ? jsonResponse.get("code").getAsInt() : -1;
             if (code != 0) {
                 String msg = jsonResponse.has("msg") ? jsonResponse.get("msg").getAsString() : "Unknown error";
-                throw new IOException("获取 Access Token 失败: code=" + code + ", msg=" + msg);
+                throw new IOException("Could not get access token: code=" + code + ", msg=" + msg);
             }
 
             if (jsonResponse.has("tenant_access_token")) {
@@ -94,7 +94,7 @@ public class FeishuApiClient {
                 AppLog.d(TAG, "Access Token 获取成功");
                 return accessToken;
             } else {
-                throw new IOException("响应中没有 tenant_access_token: " + responseBody);
+                throw new IOException("No tenant_access_token in the response: " + responseBody);
             }
         }
     }
@@ -132,7 +132,7 @@ public class FeishuApiClient {
             AppLog.d(TAG, "WebSocket 连接信息响应: " + responseBody);
 
             if (!response.isSuccessful()) {
-                throw new IOException("获取 WebSocket 连接失败: " + response.code() + " - " + responseBody);
+                throw new IOException("Could not get WebSocket connection: " + response.code() + " - " + responseBody);
             }
 
             JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
@@ -140,7 +140,7 @@ public class FeishuApiClient {
             int code = jsonResponse.has("code") ? jsonResponse.get("code").getAsInt() : -1;
             if (code != 0) {
                 String msg = jsonResponse.has("msg") ? jsonResponse.get("msg").getAsString() : "Unknown error";
-                throw new IOException("获取 WebSocket 连接失败: code=" + code + ", msg=" + msg);
+                throw new IOException("Could not get WebSocket connection: code=" + code + ", msg=" + msg);
             }
 
             JsonObject data = jsonResponse.getAsJsonObject("data");
@@ -187,7 +187,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "发送消息失败: " + responseBody);
-                throw new IOException("发送消息失败: " + response.code() + ", " + responseBody);
+                throw new IOException("Message failed: " + response.code() + ", " + responseBody);
             }
             AppLog.d(TAG, "消息发送成功: " + responseBody);
         }
@@ -226,7 +226,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "回复消息失败: " + responseBody);
-                throw new IOException("回复消息失败: " + response.code() + ", " + responseBody);
+                throw new IOException("Reply failed: " + response.code() + ", " + responseBody);
             }
             AppLog.d(TAG, "回复消息成功: " + responseBody);
         }
@@ -262,7 +262,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "上传图片失败: " + responseBody);
-                throw new IOException("上传图片失败: " + response.code() + ", " + responseBody);
+                throw new IOException("Image upload failed: " + response.code() + ", " + responseBody);
             }
 
             JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
@@ -306,7 +306,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "发送图片消息失败: " + responseBody);
-                throw new IOException("发送图片消息失败: " + response.code() + ", " + responseBody);
+                throw new IOException("Image message failed: " + response.code() + ", " + responseBody);
             }
             AppLog.d(TAG, "图片消息发送成功: " + responseBody);
         }
@@ -362,7 +362,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "上传文件失败: " + responseBody);
-                throw new IOException("上传文件失败: " + response.code() + ", " + responseBody);
+                throw new IOException("File upload failed: " + response.code() + ", " + responseBody);
             }
 
             JsonObject jsonResponse = gson.fromJson(responseBody, JsonObject.class);
@@ -406,7 +406,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "发送文件消息失败: " + responseBody);
-                throw new IOException("发送文件消息失败: " + response.code() + ", " + responseBody);
+                throw new IOException("File message failed: " + response.code() + ", " + responseBody);
             }
             AppLog.d(TAG, "文件消息发送成功: " + responseBody);
         }
@@ -451,7 +451,7 @@ public class FeishuApiClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
                 AppLog.e(TAG, "发送视频消息失败: " + responseBody);
-                throw new IOException("发送视频消息失败: " + response.code() + ", " + responseBody);
+                throw new IOException("Video message failed: " + response.code() + ", " + responseBody);
             }
             AppLog.d(TAG, "视频消息发送成功: " + responseBody);
         }

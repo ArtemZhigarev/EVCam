@@ -48,8 +48,8 @@ public class TransparentBootActivity extends Activity {
         // 【重要】远程服务（钉钉/Telegram）现在在 CameraForegroundService.onCreate() 中启动
         // 不再需要 MainActivity 来启动远程服务
         CameraForegroundService.start(this, 
-            "开机自启动", 
-            "应用已在后台运行");
+            "EVCam started with the car", 
+            "App is already running in the background");
         AppLog.d(TAG, "前台服务已启动（远程服务将在其中启动）");
         
         // 2. 启动 WorkManager 保活任务（车机必需，始终开启）

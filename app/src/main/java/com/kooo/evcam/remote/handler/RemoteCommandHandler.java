@@ -126,14 +126,14 @@ public abstract class RemoteCommandHandler {
         // 1. 检查是否已有远程录制任务正在进行
         if (isRemoteRecording) {
             AppLog.w(TAG, "远程录制任务正在进行中，拒绝新的" + platformName + "录制指令");
-            sendError(chatId, "远程录制任务正在进行中，请等待完成后再试");
+            sendError(chatId, "A remote recording is in progress, please try again when it finishes");
             return;
         }
         
         // 2. 检查摄像头控制器
         if (cameraController == null) {
             AppLog.e(TAG, "摄像头控制器未设置");
-            sendError(chatId, "摄像头未初始化");
+            sendError(chatId, "Camera not initialised");
             returnToBackgroundIfNeeded();
             return;
         }
@@ -141,7 +141,7 @@ public abstract class RemoteCommandHandler {
         // 3. 检查是否有已连接的摄像头
         if (!cameraController.hasConnectedCameras()) {
             AppLog.e(TAG, "没有可用的相机");
-            sendError(chatId, "没有可用的相机");
+            sendError(chatId, "No cameras available");
             returnToBackgroundIfNeeded();
             return;
         }
@@ -202,8 +202,8 @@ public abstract class RemoteCommandHandler {
         }
         
         // 启动前台服务保护
-        CameraForegroundService.start(context, platformName + " 远程录制", 
-                "正在录制 " + durationSeconds + " 秒视频...");
+        CameraForegroundService.start(context, platformName + " remote recording", 
+                "Recording " + durationSeconds + " s video...");
         
         // 发送录制状态广播
         FloatingWindowService.sendRecordingStateChanged(context, true);
@@ -316,7 +316,7 @@ public abstract class RemoteCommandHandler {
             cameraController.startRecording();
         }
         
-        sendError(ctx.getChatId(), "录制启动失败");
+        sendError(ctx.getChatId(), "Failed to start recording");
         returnToBackgroundIfNeeded();
     }
     
@@ -332,7 +332,7 @@ public abstract class RemoteCommandHandler {
         // 1. 检查摄像头控制器
         if (cameraController == null) {
             AppLog.e(TAG, "摄像头控制器未设置");
-            sendError(chatId, "摄像头未初始化");
+            sendError(chatId, "Camera not initialised");
             returnToBackgroundIfNeeded();
             return;
         }
@@ -340,7 +340,7 @@ public abstract class RemoteCommandHandler {
         // 2. 检查摄像头连接
         if (!cameraController.hasConnectedCameras()) {
             AppLog.e(TAG, "没有可用的相机");
-            sendError(chatId, "没有可用的相机");
+            sendError(chatId, "No cameras available");
             returnToBackgroundIfNeeded();
             return;
         }
@@ -381,7 +381,7 @@ public abstract class RemoteCommandHandler {
         List<File> videoFiles = mediaFileFinder.findVideoFiles(allTimestamps);
         if (videoFiles.isEmpty()) {
             AppLog.e(TAG, "未找到录制的视频文件，时间戳: " + allTimestamps);
-            sendError(chatId, "未找到录制的视频文件");
+            sendError(chatId, "No recorded video found");
             returnToBackgroundIfNeeded();
             return;
         }
@@ -438,7 +438,7 @@ public abstract class RemoteCommandHandler {
         List<File> photoFiles = mediaFileFinder.findPhotoFiles(timestamp);
         if (photoFiles.isEmpty()) {
             AppLog.e(TAG, "未找到拍摄的照片，时间戳: " + timestamp);
-            sendError(chatId, "未找到拍摄的照片");
+            sendError(chatId, "No photo found");
             returnToBackgroundIfNeeded();
             return;
         }

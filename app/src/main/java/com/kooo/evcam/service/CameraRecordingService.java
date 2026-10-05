@@ -202,7 +202,7 @@ public class CameraRecordingService extends Service {
 
                 if (cameraManager == null) {
                     AppLog.e(TAG, "CameraManager 未初始化");
-                    recordingController.onError(1, "CameraManager 未初始化");
+                    recordingController.onError(1, "CameraManager not initialised");
                     return;
                 }
 
@@ -211,7 +211,7 @@ public class CameraRecordingService extends Service {
                 // 摄像头必须在 MainActivity 前台运行时打开
                 if (cameraManager.isReleased()) {
                     AppLog.e(TAG, "摄像头未初始化，请先打开应用界面");
-                    recordingController.onError(3, "摄像头未初始化，请先打开应用界面");
+                    recordingController.onError(3, "Camera not initialised, open the app first");
                     return;
                 }
 
@@ -228,7 +228,7 @@ public class CameraRecordingService extends Service {
                     AppLog.d(TAG, "录制已开始, isRecording=" + isRecording);
                 } else {
                     AppLog.e(TAG, "启动录制失败");
-                    recordingController.onError(2, "启动录制失败");
+                    recordingController.onError(2, "Failed to start recording");
                 }
             } catch (Exception e) {
                 AppLog.e(TAG, "开始录制失败", e);
@@ -446,8 +446,8 @@ public class CameraRecordingService extends Service {
                 this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("EVCam 录制中")
-                .setContentText("正在录制行车视频")
+                .setContentTitle("EVCam recording")
+                .setContentText("Recording drive video")
                 .setSmallIcon(R.drawable.ic_nav_recording)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
@@ -458,9 +458,9 @@ public class CameraRecordingService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "录制服务",
+                    "Recording service",
                     NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("保持录制服务在后台运行");
+            channel.setDescription("Keep the recording service running in the background");
 
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {

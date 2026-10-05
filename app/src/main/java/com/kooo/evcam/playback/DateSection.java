@@ -124,18 +124,18 @@ public class DateSection<T> {
         long diffInDays = (today.getTimeInMillis() - targetDate.getTimeInMillis()) / (24 * 60 * 60 * 1000);
         
         if (diffInDays == 0) {
-            return "今天";
+            return "Today";
         } else if (diffInDays == 1) {
-            return "昨天";
+            return "Yesterday";
         } else if (diffInDays == 2) {
-            return "前天";
+            return "2 days ago";
         } else {
             // 判断是否是同一年
             if (today.get(Calendar.YEAR) == targetDate.get(Calendar.YEAR)) {
-                SimpleDateFormat sdf = new SimpleDateFormat("MM月dd日", Locale.CHINESE);
+                SimpleDateFormat sdf = new SimpleDateFormat("dd MMM", Locale.ENGLISH);
                 return sdf.format(date);
             } else {
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy年MM月dd日", Locale.CHINESE);
+                SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH);
                 return sdf.format(date);
             }
         }
@@ -145,7 +145,7 @@ public class DateSection<T> {
      * 获取星期几
      */
     public String getDayOfWeek() {
-        SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.CHINESE);
+        SimpleDateFormat sdf = new SimpleDateFormat("EEEE", Locale.ENGLISH);
         return sdf.format(date);
     }
     
@@ -157,7 +157,7 @@ public class DateSection<T> {
         String dayOfWeek = getDayOfWeek();
         
         // 今天、昨天、前天显示时带上星期
-        if ("今天".equals(dateDisplay) || "昨天".equals(dateDisplay) || "前天".equals(dateDisplay)) {
+        if ("Today".equals(dateDisplay) || "Yesterday".equals(dateDisplay) || "2 days ago".equals(dateDisplay)) {
             return dateDisplay + " · " + dayOfWeek;
         }
         

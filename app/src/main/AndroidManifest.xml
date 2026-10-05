@@ -55,6 +55,12 @@
         <provider android:authorities="com.kooo.evcc.displays" />
     </queries>
 
+    <!-- AppsForMyCar: only apps signed with our key (LocalStore) may ask EVCam for snapshots. -->
+    <permission
+        android:name="org.ex2.permission.CAR_SNAPSHOT"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="org.ex2.permission.CAR_SNAPSHOT" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -289,6 +295,14 @@
                 <action android:name="android.intent.action.PACKAGE_ADDED" />
                 <action android:name="android.intent.action.PACKAGE_REPLACED" />
                 <data android:scheme="package" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".AfmcSnapshotReceiver"
+            android:exported="true"
+            android:permission="org.ex2.permission.CAR_SNAPSHOT">
+            <intent-filter>
+                <action android:name="org.ex2.evcam.TAKE_SNAPSHOT" />
             </intent-filter>
         </receiver>
     </application>

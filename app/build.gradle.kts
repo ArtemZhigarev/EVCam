@@ -1,27 +1,36 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
+}
+
+// AppsForMyCar fork: signed with our key (~/.appsformycar/localstore-signing.properties, never in
+// the repo) instead of the AOSP public test key upstream uses.
+val afmcSigning = Properties().apply {
+    val f = file(System.getProperty("user.home") + "/.appsformycar/localstore-signing.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
 }
 
 android {
     namespace = "com.kooo.evcam"
     compileSdk = 36
 
-    // 签名配置 (使用 AOSP 公共测试签名)
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore/release.jks")
-            storePassword = "android"
-            keyAlias = "apkeasytool"
-            keyPassword = "android"
+            storeFile = file(afmcSigning.getProperty("storeFile") ?: "missing.jks")
+            storePassword = afmcSigning.getProperty("storePassword")
+            keyAlias = afmcSigning.getProperty("keyAlias")
+            keyPassword = afmcSigning.getProperty("keyPassword")
         }
     }
 
     defaultConfig {
-        applicationId = "com.kooo.evcam"
+        // Own package so it installs next to upstream builds (e.g. the Eucalyptus copy).
+        applicationId = "org.ex2.evcam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 77
-        versionName = "1.6.6-test-06220930"
+        versionCode = 77005
+        versionName = "1.6.6-afmc.5"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

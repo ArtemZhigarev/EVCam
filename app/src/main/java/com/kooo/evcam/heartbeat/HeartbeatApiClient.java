@@ -53,11 +53,11 @@ public class HeartbeatApiClient {
                                           byte[] imageBytes, int imageWidth, int imageHeight,
                                           int cameraCount, String appStatus) {
         if (serverUrl == null || serverUrl.isEmpty()) {
-            return new HeartbeatResult(false, "服务器地址未配置");
+            return new HeartbeatResult(false, "Server address not set");
         }
         
         if (imageBytes == null || imageBytes.length == 0) {
-            return new HeartbeatResult(false, "图片数据为空");
+            return new HeartbeatResult(false, "Image data is empty");
         }
         
         try {
@@ -67,7 +67,7 @@ public class HeartbeatApiClient {
             String signature = generateSignature(vehicleId, timestamp, nonce, secretKey);
             
             if (signature == null) {
-                return new HeartbeatResult(false, "签名生成失败");
+                return new HeartbeatResult(false, "Signature generation failed");
             }
             
             // 构建 JSON 请求体
@@ -95,7 +95,7 @@ public class HeartbeatApiClient {
                 
                 if (response.isSuccessful()) {
                     AppLog.d(TAG, "心跳请求成功: " + code);
-                    return new HeartbeatResult(true, "成功", code, responseBody);
+                    return new HeartbeatResult(true, "Success", code, responseBody);
                 } else {
                     AppLog.w(TAG, "心跳请求失败: " + code + ", " + responseBody);
                     return new HeartbeatResult(false, "HTTP " + code + ": " + responseBody, code, responseBody);
@@ -104,10 +104,10 @@ public class HeartbeatApiClient {
             
         } catch (IOException e) {
             AppLog.e(TAG, "心跳请求网络错误: " + e.getMessage());
-            return new HeartbeatResult(false, "网络错误: " + e.getMessage());
+            return new HeartbeatResult(false, "Network error: " + e.getMessage());
         } catch (Exception e) {
             AppLog.e(TAG, "心跳请求异常: " + e.getMessage(), e);
-            return new HeartbeatResult(false, "异常: " + e.getMessage());
+            return new HeartbeatResult(false, "Error: " + e.getMessage());
         }
     }
     

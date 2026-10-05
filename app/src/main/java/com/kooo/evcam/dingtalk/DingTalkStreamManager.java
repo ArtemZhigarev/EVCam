@@ -68,7 +68,7 @@ public class DingTalkStreamManager {
          * @return 状态信息字符串
          */
         default String getStatusInfo() {
-            return "状态信息不可用";
+            return "Status info unavailable";
         }
         
         /**
@@ -76,7 +76,7 @@ public class DingTalkStreamManager {
          * @return 执行结果消息
          */
         default String onStartRecordingCommand() {
-            return "功能不可用";
+            return "Feature unavailable";
         }
         
         /**
@@ -84,7 +84,7 @@ public class DingTalkStreamManager {
          * @return 执行结果消息
          */
         default String onStopRecordingCommand() {
-            return "功能不可用";
+            return "Feature unavailable";
         }
         
         /**
@@ -93,7 +93,7 @@ public class DingTalkStreamManager {
          * @return 执行结果消息
          */
         default String onExitCommand(boolean confirmed) {
-            return "功能不可用";
+            return "Feature unavailable";
         }
         
         /**
@@ -101,7 +101,7 @@ public class DingTalkStreamManager {
          * @return 执行结果消息
          */
         default String onForegroundCommand() {
-            return "功能不可用";
+            return "Feature unavailable";
         }
         
         /**
@@ -109,7 +109,7 @@ public class DingTalkStreamManager {
          * @return 执行结果消息
          */
         default String onBackgroundCommand() {
-            return "功能不可用";
+            return "Feature unavailable";
         }
     }
 
@@ -206,7 +206,7 @@ public class DingTalkStreamManager {
                         }
                     }, delay);
                 } else {
-                    mainHandler.post(() -> callback.onError("启动失败: " + e.getMessage()));
+                    mainHandler.post(() -> callback.onError("Start failed: " + e.getMessage()));
                 }
             }
         }).start();
@@ -326,7 +326,7 @@ public class DingTalkStreamManager {
                     if (networkWasLost && autoReconnect) {
                         AppLog.d(TAG, "网络恢复（深度休眠唤醒），" + RECONNECT_AFTER_NETWORK_DELAY_MS + "ms 后重连");
                         networkWasLost = false;
-                        mainHandler.postDelayed(() -> forceReconnect("网络恢复(深度休眠唤醒)"), RECONNECT_AFTER_NETWORK_DELAY_MS);
+                        mainHandler.postDelayed(() -> forceReconnect("Network restored (wake from deep sleep)"), RECONNECT_AFTER_NETWORK_DELAY_MS);
                     }
                 }
 
@@ -384,12 +384,12 @@ public class DingTalkStreamManager {
                         // 连接断了但网络可用 → 可能重连失败了，再次触发重连
                         AppLog.w(TAG, "安全网检查：连接未运行但网络可用，触发重连");
                         networkWasLost = false;
-                        forceReconnect("安全网检查(连接已断开)");
+                        forceReconnect("Safety check (connection lost)");
                     } else if (isRunning && networkWasLost && hasNetwork) {
                         // 运行中但网络曾丢失且已恢复 → onAvailable 可能被遗漏
                         AppLog.w(TAG, "安全网检查：网络已恢复但未收到回调，强制重连");
                         networkWasLost = false;
-                        forceReconnect("安全网检查(网络恢复遗漏)");
+                        forceReconnect("Safety check (missed network recovery)");
                     }
                 } catch (Exception e) {
                     AppLog.e(TAG, "安全网检查失败", e);
@@ -506,7 +506,7 @@ public class DingTalkStreamManager {
                     AppLog.d(TAG, "收到录制指令，时长: " + durationSeconds + " 秒");
 
                     // 发送确认消息，并在发送完成后执行录制命令
-                    String confirmMsg = String.format("收到录制指令，开始录制 %d 秒视频...", durationSeconds);
+                    String confirmMsg = String.format("Record command received, recording %d s video...", durationSeconds);
                     String finalConversationId = conversationId;
                     String finalConversationType = conversationType;
                     String finalSenderId = senderId;
@@ -528,7 +528,7 @@ public class DingTalkStreamManager {
                     String finalConversationType = conversationType;
                     String finalSenderId = senderId;
                     
-                    sendResponseAndThen(sessionWebhook, "收到拍照指令，正在拍照...", () -> {
+                    sendResponseAndThen(sessionWebhook, "Photo command received, taking photo...", () -> {
                         // 使用 WakeUpHelper 唤醒屏幕并启动 Activity
                         // 这样可以确保在后台时也能正常拍照
                         AppLog.d(TAG, "使用 WakeUpHelper 启动拍照...");
@@ -540,7 +540,7 @@ public class DingTalkStreamManager {
                     // 状态指令：显示应用状态
                     AppLog.d(TAG, "收到状态指令");
                     String statusInfo = commandCallback != null ? 
-                            commandCallback.getStatusInfo() : "状态信息不可用";
+                            commandCallback.getStatusInfo() : "Status info unavailable";
                     sendResponse(sessionWebhook, statusInfo);
 
                 } else if ("启动录制".equals(command) || "开始录制".equals(command) || 
@@ -551,7 +551,7 @@ public class DingTalkStreamManager {
                         String result = commandCallback.onStartRecordingCommand();
                         sendResponse(sessionWebhook, result);
                     } else {
-                        sendResponse(sessionWebhook, "❌ 功能不可用");
+                        sendResponse(sessionWebhook, "❌ Feature unavailable");
                     }
 
                 } else if ("结束录制".equals(command) || "停止录制".equals(command) || 
@@ -562,25 +562,25 @@ public class DingTalkStreamManager {
                         String result = commandCallback.onStopRecordingCommand();
                         sendResponse(sessionWebhook, result);
                     } else {
-                        sendResponse(sessionWebhook, "❌ 功能不可用");
+                        sendResponse(sessionWebhook, "❌ Feature unavailable");
                     }
 
                 } else if ("退出".equals(command) || "exit".equalsIgnoreCase(command)) {
                     // 退出指令：需要二次确认
                     AppLog.d(TAG, "收到退出指令（需二次确认）");
                     sendResponse(sessionWebhook, 
-                        "⚠️ 确认要退出 EVCam 吗？\n\n" +
-                        "退出后将停止所有录制和远程服务。\n" +
-                        "发送「确认退出」执行退出操作。");
+                        "⚠️ Are you sure you want to exit EVCam?\n\n" +
+                        "Exiting stops all recording and remote services.\n" +
+                        "Send 'confirm exit' to exit.");
 
-                } else if ("确认退出".equals(command)) {
+                } else if (("确认退出".equals(command) || "confirm exit".equalsIgnoreCase(command))) {
                     // 确认退出指令：执行退出
                     AppLog.d(TAG, "收到确认退出指令");
                     if (commandCallback != null) {
                         String result = commandCallback.onExitCommand(true);
                         sendResponse(sessionWebhook, result);
                     } else {
-                        sendResponse(sessionWebhook, "❌ 功能不可用");
+                        sendResponse(sessionWebhook, "❌ Feature unavailable");
                     }
 
                 } else if ("前台".equals(command) || "foreground".equalsIgnoreCase(command)) {
@@ -590,7 +590,7 @@ public class DingTalkStreamManager {
                         String result = commandCallback.onForegroundCommand();
                         sendResponse(sessionWebhook, result);
                     } else {
-                        sendResponse(sessionWebhook, "❌ 功能不可用");
+                        sendResponse(sessionWebhook, "❌ Feature unavailable");
                     }
 
                 } else if ("后台".equals(command) || "background".equalsIgnoreCase(command)) {
@@ -600,27 +600,27 @@ public class DingTalkStreamManager {
                         String result = commandCallback.onBackgroundCommand();
                         sendResponse(sessionWebhook, result);
                     } else {
-                        sendResponse(sessionWebhook, "❌ 功能不可用");
+                        sendResponse(sessionWebhook, "❌ Feature unavailable");
                     }
 
                 } else if ("帮助".equals(command) || "help".equalsIgnoreCase(command)) {
                     sendResponse(sessionWebhook,
-                        "可用指令：\n" +
-                        "• 状态 - 查看应用状态\n" +
-                        "• 前台 - 将应用切换到前台\n" +
-                        "• 后台 - 将应用切换到后台\n" +
-                        "• 启动录制 - 开始持续录制\n" +
-                        "• 结束录制 - 停止录制并退到后台\n" +
-                        "• 录制 - 录制 60 秒视频\n" +
-                        "• 录制+数字 - 录制指定秒数（如：录制30）\n" +
-                        "• 拍照 - 拍摄照片\n" +
-                        "• 退出 - 退出应用（需确认）\n" +
-                        "• 帮助 - 显示此帮助");
+                        "Available commands:\n" +
+                        "• status - View app status\n" +
+                        "• foreground - Bring app to foreground\n" +
+                        "• background - Send app to background\n" +
+                        "• start recording - Start continuous recording\n" +
+                        "• stop recording - Stop recording and go to background\n" +
+                        "• record - Record a 60 s video\n" +
+                        "• record+number - Record for N seconds (e.g. record30)\n" +
+                        "• photo - Take a photo\n" +
+                        "• exit - Exit app (needs confirmation)\n" +
+                        "• help - Show this help");
 
                 } else {
                     AppLog.d(TAG, "未识别的指令: " + command);
                     sendResponse(sessionWebhook,
-                        "未识别的指令。发送「帮助」查看可用指令。");
+                        "Unknown command. Send 'help' to see the commands.");
                 }
 
                 return EventAckStatus.SUCCESS;

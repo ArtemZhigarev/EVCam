@@ -500,9 +500,9 @@ public class StorageHelper {
         List<String> info = new ArrayList<>();
         
         // 0. 显示内部存储路径（用于对比）
-        info.add("=== 内部存储 ===");
+        info.add("=== Internal storage ===");
         String internalPath = Environment.getExternalStorageDirectory().getAbsolutePath();
-        info.add("路径: " + internalPath);
+        info.add("Path: " + internalPath);
         info.add("");
         
         // 1. /proc/mounts 内容（最可靠的挂载信息）
@@ -519,9 +519,9 @@ public class StorageHelper {
                     if (mountPoint.startsWith("/storage/")) {
                         String marker = "";
                         if (mountPoint.contains("emulated")) {
-                            marker = " [内部]";
+                            marker = " [internal]";
                         } else if (mountPoint.matches("/storage/[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}")) {
-                            marker = " [U盘]";
+                            marker = " [USB]";
                         }
                         info.add(mountPoint + marker);
                     }
@@ -529,7 +529,7 @@ public class StorageHelper {
             }
             reader.close();
         } catch (Exception e) {
-            info.add("读取失败: " + e.getMessage());
+            info.add("Read failed: " + e.getMessage());
         }
         
         // 2. getExternalFilesDirs 信息
@@ -541,41 +541,41 @@ public class StorageHelper {
                 for (int i = 0; i < externalDirs.length; i++) {
                     File dir = externalDirs[i];
                     if (dir != null) {
-                        String label = (i == 0) ? "[0] 内部" : "[" + i + "] 外部";
+                        String label = (i == 0) ? "[0] Internal" : "[" + i + "] External";
                         info.add(label + ": " + dir.getAbsolutePath());
                     } else {
                         info.add("[" + i + "] null");
                     }
                 }
             } else {
-                info.add("返回 null");
+                info.add("Return null");
             }
         } catch (Exception e) {
-            info.add("错误: " + e.getMessage());
+            info.add("Error: " + e.getMessage());
         }
         
         // 3. 自定义路径
         info.add("");
-        info.add("=== 自定义路径 ===");
+        info.add("=== Custom path ===");
         AppConfig config = new AppConfig(context);
         String customPath = config.getCustomSdCardPath();
         if (customPath != null && !customPath.isEmpty()) {
             File customDir = new File(customPath);
-            info.add("路径: " + customPath);
-            info.add("存在: " + customDir.exists() + ", 可读: " + customDir.canRead() + ", 可写: " + customDir.canWrite());
+            info.add("Path: " + customPath);
+            info.add("Exists: " + customDir.exists() + ", readable: " + customDir.canRead() + ", writable: " + customDir.canWrite());
         } else {
-            info.add("未设置");
+            info.add("Not set");
         }
         
         // 4. 检测结果
         info.add("");
-        info.add("=== 检测结果 ===");
+        info.add("=== Detection results ===");
         File sdCard = getExternalSdCardRoot(context);
         if (sdCard != null) {
-            info.add("检测到U盘: " + sdCard.getAbsolutePath());
-            info.add("可写入: " + sdCard.canWrite());
+            info.add("USB drive detected: " + sdCard.getAbsolutePath());
+            info.add("Writable: " + sdCard.canWrite());
         } else {
-            info.add("未检测到U盘");
+            info.add("No USB drive detected");
         }
         
         return info;
@@ -626,7 +626,7 @@ public class StorageHelper {
      */
     public static String formatSize(long bytes) {
         if (bytes < 0) {
-            return "未知";
+            return "Unknown";
         }
         
         final long KB = 1024;
@@ -656,13 +656,13 @@ public class StorageHelper {
         
         if (useExternalSd) {
             storageDir = getExternalSdCardRoot(context);
-            storageName = "U盘";
+            storageName = "USB drive";
             if (storageDir == null) {
-                return "U盘不可用";
+                return "USB drive unavailable";
             }
         } else {
             storageDir = Environment.getExternalStorageDirectory();
-            storageName = "内部存储";
+            storageName = "Internal storage";
         }
         
         long available = getAvailableSpace(storageDir);
@@ -672,7 +672,7 @@ public class StorageHelper {
             return storageName;
         }
         
-        return String.format("%s（可用 %s / 共 %s）", 
+        return String.format("%s (%s free / %s total)", 
                 storageName, 
                 formatSize(available), 
                 formatSize(total));
