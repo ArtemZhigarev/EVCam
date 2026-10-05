@@ -26,6 +26,7 @@ import java.util.Set;
 final class AfmcGeelyEx2Defaults {
     private static final String TAG = "AfmcEx2";
     private static final String KEY_BACKGROUND_RECORDING_APPLIED = "afmc_background_recording_applied";
+    private static final String KEY_USB_STORAGE_APPLIED = "afmc_usb_storage_applied";
 
     private AfmcGeelyEx2Defaults() {}
 
@@ -48,7 +49,23 @@ final class AfmcGeelyEx2Defaults {
     /** Called from every AppConfig constructor, so it has to stay cheap once the defaults are in. */
     static void apply(Context context, SharedPreferences prefs) {
         applyBackgroundRecording(prefs);
+        applyUsbStorage(prefs);
         applyIfFresh(context, prefs);
+    }
+
+    /**
+     * Recordings go to a USB stick when one is plugged in (owner request, 2026-10-05). This is
+     * upstream's "storage location" setting: with no stick present upstream records to the head
+     * unit's own storage instead, and clears old clips when that runs low. Set once, also on
+     * existing installs; after that whatever the owner picks in Settings stays.
+     */
+    private static void applyUsbStorage(SharedPreferences prefs) {
+        if (prefs.contains(KEY_USB_STORAGE_APPLIED) || !isEx2HeadUnit()) return;
+        prefs.edit()
+                .putString("storage_location", AppConfig.STORAGE_EXTERNAL_SD)
+                .putBoolean(KEY_USB_STORAGE_APPLIED, true)
+                .apply();
+        AppLog.d(TAG, "Geely EX2: recordings go to a USB stick when one is plugged in");
     }
 
     /**

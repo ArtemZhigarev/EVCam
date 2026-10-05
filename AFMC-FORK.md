@@ -33,6 +33,9 @@ Planned: interior cameras (Camera2 IDs 0/1), snapshot hand-off to LocalStore whi
 - 2026-10-05: 1.6.6-afmc.1 installed on the test EX2 (replacing the upstream/Eucalyptus copy); EX2 defaults
   applied on first start; cameras 2-5 open in org.ex2.evcam. Copy of the APK: `OneDrive/Claude/keys/releases/`.
 - 2026-10-05: 1.6.6-afmc.4 built (afmc.3 was the snapshot hand-off build): English UI finished (60 more strings, date/status
+- 2026-10-05: **afmc.6**: recordings default to a USB stick when one is plugged in (upstream's storage-location
+  setting, switched on once on the EX2; no stick = the head unit's own storage, as before). LocalStore grants
+  the "all files" access writing to a stick needs. Not yet tried with a stick in the car.
 - 2026-10-05: **afmc.5**: restart test on the car showed two things. (1) The start with the car was refused by
   Android until EVCam had "display over other apps" (LocalStore 0.0.19 grants it; granted by hand on the test
   car) — after that it recorded 34 s after a head-unit restart. (2) EVCam then stayed on screen. afmc.5 goes to
