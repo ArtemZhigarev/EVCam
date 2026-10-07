@@ -289,7 +289,7 @@ public final class AfmcSentryMode {
     }
 
     /** The last frame near the end of [clip] as a JPEG; false when the clip can't be read (still being written). */
-    private static boolean frameFrom(File clip, File out) {
+    static boolean frameFrom(File clip, File out) {
         MediaMetadataRetriever r = new MediaMetadataRetriever();
         try {
             r.setDataSource(clip.getAbsolutePath());

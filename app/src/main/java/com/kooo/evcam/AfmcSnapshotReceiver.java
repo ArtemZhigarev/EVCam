@@ -51,6 +51,31 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
         final PendingResult pending = goAsync();
         // Never the same second as a sentry picture: both pick their files up by this name.
         final String timestamp = AfmcSentryMode.claimTimestamp();
+
+        // While recording, the picture comes from each camera's newest finished clip: take-picture copies
+        // the on-screen preview, which is black while EVCam isn't on screen (seen on the EX2 2026-10-07:
+        // four 6,838-byte black snapshots). At most one clip (~1 min) old.
+        if (m.isRecording()) {
+            new Thread(() -> {
+                ArrayList<String> paths = new ArrayList<>();
+                try {
+                    File dir = StorageHelper.getPhotoDir(app);
+                    File[] clips = StorageHelper.getFinalVideoDir(app).listFiles();
+                    for (String position : new String[]{"front", "back", "left", "right"}) {
+                        for (File clip : AfmcSentryPolicy.clipsFor(clips, position)) {
+                            File out = new File(dir, timestamp + "_" + position + ".jpg");
+                            if (AfmcSentryMode.frameFrom(clip, out)) { paths.add(out.getAbsolutePath()); break; }
+                        }
+                    }
+                    reply(app, requestId, paths.toArray(new String[0]), paths.isEmpty() ? "No pictures could be made from the recordings" : null);
+                } catch (Throwable t) {
+                    reply(app, requestId, paths.toArray(new String[0]), "Error: " + t.getMessage());
+                } finally {
+                    pending.finish();
+                }
+            }).start();
+            return;
+        }
         final Handler main = new Handler(Looper.getMainLooper());
         main.post(() -> {
             try {
