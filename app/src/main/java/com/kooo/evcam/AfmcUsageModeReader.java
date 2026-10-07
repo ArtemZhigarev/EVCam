@@ -38,6 +38,8 @@ final class AfmcUsageModeReader {
 
     private volatile boolean running;
     private volatile Integer usage;
+    private volatile Integer lock;
+    private volatile Integer camping;
     private volatile long readAtMs;
     private volatile ManagedChannel channel;
     private Thread thread;
@@ -63,6 +65,15 @@ final class AfmcUsageModeReader {
     /** The latest usage mode, or null when none has been read yet. */
     Integer usage() {
         return usage;
+    }
+
+    /** Central lock and camping flag, last values seen (null until seen). */
+    Integer lock() {
+        return lock;
+    }
+
+    Integer camping() {
+        return camping;
     }
 
     /** When usage() was last read (SystemClock.elapsedRealtime), 0 if never. */
@@ -104,6 +115,10 @@ final class AfmcUsageModeReader {
                 new StreamObserver<byte[]>() {
                     @Override
                     public void onNext(byte[] value) {
+                        Integer l = AfmcVhalProps.findInt32(value, AfmcSentryPolicy.LOCK_PROP);
+                        if (l != null) lock = l;
+                        Integer c = AfmcVhalProps.findInt32(value, AfmcSentryPolicy.CAMPING_PROP);
+                        if (c != null) camping = c;
                         Integer v = AfmcVhalProps.findInt32(value, AfmcSentryPolicy.USAGE_MODE_PROP);
                         if (v == null) return;
                         Integer before = usage;

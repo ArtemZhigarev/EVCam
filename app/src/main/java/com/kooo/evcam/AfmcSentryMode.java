@@ -180,7 +180,9 @@ public final class AfmcSentryMode {
         if (enabled) usageReader.start(); else usageReader.stop();
 
         long now = SystemClock.elapsedRealtime();
-        Integer usage = AfmcSentryPolicy.freshUsage(usageReader.usage(), usageReader.readAtMs(), now);
+        Integer usage = AfmcSentryPolicy.effectiveUsage(
+                AfmcSentryPolicy.freshUsage(usageReader.usage(), usageReader.readAtMs(), now),
+                usageReader.lock(), usageReader.camping());
         switch (AfmcSentryPolicy.decide(enabled, usage, active)) {
             case START:
                 AppLog.d(TAG, "car left (usage mode " + usage + "): sentry on, pictures every "

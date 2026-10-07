@@ -217,4 +217,13 @@ public class AfmcSentryPolicyTest {
         assertEquals("20261007_135046_front.mp4", front.get(1).getName());
         assertEquals(0, AfmcSentryPolicy.clipsFor(null, "front").size());
     }
+
+    @Test
+    public void lockedInCampingModeCountsAsLeft() {
+        assertEquals(Integer.valueOf(1), AfmcSentryPolicy.effectiveUsage(2, 3, 1));   // locked, camping: sentry runs
+        assertEquals(Integer.valueOf(2), AfmcSentryPolicy.effectiveUsage(2, 1, 1));   // camping but unlocked: someone may be there
+        assertEquals(Integer.valueOf(2), AfmcSentryPolicy.effectiveUsage(2, 3, 0));   // locked while driving (auto-lock), no camping
+        assertEquals(Integer.valueOf(13), AfmcSentryPolicy.effectiveUsage(13, 3, 1)); // driving is never left
+        assertEquals(null, AfmcSentryPolicy.effectiveUsage(null, 3, 1));
+    }
 }

@@ -21,6 +21,11 @@ final class AfmcSentryPolicy {
 
     /** The car's usage mode property (0x21408030): 2 in use, 1 left, 0 going to sleep. */
     static final int USAGE_MODE_PROP = 0x21408030;
+    /** Central lock: 3 locked, 1 unlocked. */
+    static final int LOCK_PROP = 0x21408033;
+    static final int LOCKED = 3;
+    /** The car's camping mode flag (its own camping scene sets it): 1 on. */
+    static final int CAMPING_PROP = 0x21207626;
     static final int USAGE_IN_USE = 2;
     static final int USAGE_LEFT = 1;
     static final int USAGE_SLEEPING = 0;
@@ -82,6 +87,16 @@ final class AfmcSentryPolicy {
     }
 
     /** The usage reading to act on: null when there is none or it is older than USAGE_STALE_MS. */
+    /**
+     * The usage mode sentry acts on. Camping mode keeps the car "in use" (2) even when the owner has
+     * locked it and walked away (EX2 2026-10-07): locked + camping counts as left, so sentry records
+     * while the car is held on that way.
+     */
+    static Integer effectiveUsage(Integer usage, Integer lock, Integer camping) {
+        if (usage != null && usage == USAGE_IN_USE && lock != null && lock == LOCKED && camping != null && camping == 1) return USAGE_LEFT;
+        return usage;
+    }
+
     static Integer freshUsage(Integer usage, long readAtMs, long nowMs) {
         if (usage == null || readAtMs <= 0 || nowMs - readAtMs > USAGE_STALE_MS) return null;
         return usage;
