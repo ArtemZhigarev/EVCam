@@ -305,6 +305,15 @@
                 <action android:name="org.ex2.evcam.TAKE_SNAPSHOT" />
             </intent-filter>
         </receiver>
+        <!-- AppsForMyCar: sentry mode on/off from the owner's account, through LocalStore (signature permission). -->
+        <receiver
+            android:name=".AfmcSentryReceiver"
+            android:exported="true"
+            android:permission="org.ex2.permission.CAR_SNAPSHOT">
+            <intent-filter>
+                <action android:name="org.ex2.evcam.SET_SENTRY" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

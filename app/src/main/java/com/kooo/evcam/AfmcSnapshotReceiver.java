@@ -11,10 +11,7 @@ import com.kooo.evcam.camera.MultiCameraManager;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
 
 /**
  * AppsForMyCar fork: lets LocalStore get pictures from the cameras EVCam already has open, so a
@@ -52,7 +49,8 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
         }
 
         final PendingResult pending = goAsync();
-        final String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
+        // Never the same second as a sentry picture: both pick their files up by this name.
+        final String timestamp = AfmcSentryMode.claimTimestamp();
         final Handler main = new Handler(Looper.getMainLooper());
         main.post(() -> {
             try {
@@ -88,7 +86,7 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
      * (MainActivity then reuses that one) or the Activity was recreated — the one in upstream's
      * process-wide CameraManagerHolder.
      */
-    private static MultiCameraManager currentManager() {
+    static MultiCameraManager currentManager() {
         MultiCameraManager m = manager.get();
         if (m == null || m.isReleased()) {
             m = CameraManagerHolder.getInstance().getCameraManager();

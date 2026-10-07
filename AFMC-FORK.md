@@ -23,6 +23,7 @@ fork stays GPL-3.0 and its source must be published alongside any APK we distrib
 | English UI: `afmc-i18n/apply.py` + `zh-en.json` (text) + `fixups.json` (source fix-ups), applied in place — the committed sources are already English; rerun after every upstream pull | upstream is Chinese-only. Logs, comments and bot-command keywords stay Chinese |
 | `AfmcSnapshotReceiver` (+ `org.ex2.permission.CAR_SNAPSHOT`, one line in `MainActivity`) | LocalStore gets pictures from the cameras EVCam has open; falls back to upstream's `CameraManagerHolder` when MainActivity didn't create the camera manager |
 | Background recording (afmc.4): `AfmcGeelyEx2Defaults` turns on upstream's "Start when the car starts" (`auto_start_on_boot`) and "Record automatically" (`auto_start_recording`) once on every EX2; `MainActivity` (`afmc*` members) moves EVCam back to the background once an automatic recording runs and, after a wake, brings it to the front briefly if the cameras won't open in the background; `CameraForegroundService` keeps the "EVCam is recording" notification while recording | owner wants EVCam recording without opening it, also behind Waze/LocalStore. Everything else (foreground service, boot receiver, keep-alive, resume after screen-on) is upstream's. Off switch: Settings → Record automatically |
+| Sentry mode (afmc.7): `AfmcSentryMode` (+ `AfmcSentryPolicy`, `AfmcUsageModeReader`, `AfmcVhalProps`, `AfmcSentrySettings`; a few `AfmcSentryMode` lines in `MainActivity`, one in `SettingsFragment`, a card in `fragment_settings.xml`) | owner request: off by default; Settings → Sentry mode (on/off, picture every 1/2/5/10/15 min, default 5). While the car is left (usage mode 0x21408030 ≠ 2, read-only from the vehicle HAL's gRPC stream on 127.0.0.1:40004) it keeps recording (also with the screen off) and saves a picture from each outside camera to `DCIM/Sentry/<yyyyMMdd_HHmmss>_<position>.jpg` on the recording drive; when that drive is short it deletes the oldest sentry pictures first, then the oldest finished clips. Never Camera2 IDs 0/1. Stops when the car is in use. Logcat tag `AfmcSentry` |
 
 Build: `bash android/evcam/build.sh` (builds outside OneDrive; APK in `~/build/evcam/...`).
 Pull upstream changes: `git subtree pull --prefix android/evcam https://github.com/suyunkai/EVCam.git master --squash`.
@@ -30,6 +31,9 @@ Pull upstream changes: `git subtree pull --prefix android/evcam https://github.c
 Planned: interior cameras (Camera2 IDs 0/1), snapshot hand-off to LocalStore while recording.
 
 ## Status
+- 2026-10-06: **afmc.7** built (not installed): sentry mode, see the table. The LocalStore snapshot receiver now
+  takes its picture timestamp from `AfmcSentryMode.claimTimestamp()` so the two never share a second. Unit tests:
+  `AfmcSentryPolicyTest`, `AfmcVhalPropsTest` (`build.sh testDebugUnitTest assembleRelease`). Needs the on-car test.
 - 2026-10-05: 1.6.6-afmc.1 installed on the test EX2 (replacing the upstream/Eucalyptus copy); EX2 defaults
   applied on first start; cameras 2-5 open in org.ex2.evcam. Copy of the APK: `OneDrive/Claude/keys/releases/`.
 - 2026-10-05: 1.6.6-afmc.4 built (afmc.3 was the snapshot hand-off build): English UI finished (60 more strings, date/status

@@ -428,6 +428,9 @@ public class MainActivity extends AppCompatActivity {
         // 启动存储清理任务（如果用户设置了限制）
         storageCleanupManager = new StorageCleanupManager(this);
         storageCleanupManager.start();
+
+        // AppsForMyCar: sentry mode (off unless switched on in Settings)
+        AfmcSentryMode.get(this).attach(afmcSentryRecorder());
         
         // 启动文件传输服务（用于U盘中转写入模式）
         FileTransferManager.getInstance(this).start();
@@ -3658,6 +3661,56 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
+     * AppsForMyCar: what sentry mode (AfmcSentryMode) needs from this screen: whether it records,
+     * and starting/stopping a recording. Starting opens the cameras first if they were closed, and
+     * brings EVCam to the front briefly (then back) if they won't open in the background.
+     */
+    private AfmcSentryMode.Recorder afmcSentryRecorder() {
+        return new AfmcSentryMode.Recorder() {
+            @Override
+            public boolean isRecording() {
+                return isRecording;
+            }
+
+            @Override
+            public void startRecording() {
+                if (isRecording || isFinishing() || isDestroyed()) return;
+                if (cameraManager != null && cameraManager.hasConnectedCameras()) {
+                    MainActivity.this.startRecording();
+                    return;
+                }
+                if (cameraManager != null) {
+                    try {
+                        cameraManager.openAllCameras();
+                    } catch (Exception e) {
+                        AppLog.e(TAG, "AFMC sentry: opening the cameras failed: " + e.getMessage());
+                    }
+                }
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (isRecording || isFinishing() || isDestroyed()) return;
+                    if (cameraManager != null && cameraManager.hasConnectedCameras()) {
+                        MainActivity.this.startRecording();
+                    } else if (isInBackground) {
+                        AppLog.d(TAG, "AFMC sentry: cameras need the screen, bringing EVCam to the front to record");
+                        afmcArmReturnToBackground("sentry mode");
+                        try {
+                            WakeUpHelper.launchForForeground(MainActivity.this);
+                        } catch (Exception e) {
+                            afmcReturnToBackgroundUntil = 0;
+                            AppLog.e(TAG, "AFMC sentry: could not bring EVCam to the front: " + e.getMessage());
+                        }
+                    }
+                }, 2000);
+            }
+
+            @Override
+            public void stopRecording() {
+                if (isRecording) MainActivity.this.stopRecording();
+            }
+        };
+    }
+
+    /**
      * AppsForMyCar: the driver touched EVCam's screen — leave it on screen. Touches only: the head
      * unit delivers key events of its own, which must not count as the driver using EVCam.
      */
@@ -3776,7 +3829,8 @@ public class MainActivity extends AppCompatActivity {
         }
         
         // 判断是否为"自动录制+息屏录制"组合（需要保持相机活跃）
-        boolean keepCameraActive = appConfig.isAutoStartRecording() && appConfig.isScreenOffRecordingEnabled();
+        boolean keepCameraActive = (appConfig.isAutoStartRecording() && appConfig.isScreenOffRecordingEnabled())
+                || AfmcSentryMode.holdsCameras();  // AppsForMyCar: sentry mode records with the screen off
         
         // 如果正在录制
         if (isRecording) {
@@ -3816,7 +3870,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 
                 // 检查息屏录制设置是否被更改（防止在等待期间用户开启了息屏录制）
-                if (appConfig.isScreenOffRecordingEnabled()) {
+                if (appConfig.isScreenOffRecordingEnabled() || AfmcSentryMode.holdsCameras()) {
                     AppLog.d(TAG, "息屏录制已被启用，继续录制");
                     return;
                 }
@@ -3869,7 +3923,8 @@ public class MainActivity extends AppCompatActivity {
             }
             
             // 如果开启了自动录制+息屏录制，不退后台
-            if (appConfig.isAutoStartRecording() && appConfig.isScreenOffRecordingEnabled()) {
+            if ((appConfig.isAutoStartRecording() && appConfig.isScreenOffRecordingEnabled())
+                    || AfmcSentryMode.holdsCameras()) {  // AppsForMyCar: sentry mode
                 AppLog.d(TAG, "息屏录制模式已启用，不退后台");
                 return;
             }

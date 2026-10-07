@@ -445,6 +445,8 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        AfmcSentrySettings.bind(view);  // AppsForMyCar: sentry mode
+
         // 设置息屏录制开关监听器
         screenOffRecordingSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (getContext() != null && appConfig != null) {
