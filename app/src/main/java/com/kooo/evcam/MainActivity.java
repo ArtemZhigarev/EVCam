@@ -3710,6 +3710,35 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    /** AppsForMyCar: whether EVCam is recording right now (AfmcRecordingReceiver). Any thread. */
+    public boolean afmcIsRecording() {
+        return isRecording;
+    }
+
+    /**
+     * AppsForMyCar: "Record automatically" was just switched from LocalStore (AfmcRecordingReceiver);
+     * the setting is already saved. Main thread. Makes it take effect now instead of at EVCam's next
+     * start: the once-a-minute "keep recording" check follows the setting, and AfmcRecordingPolicy
+     * says whether to start or stop a recording. Switching on forgets a stop the driver made by hand.
+     */
+    void afmcRecordWhileDrivingSwitched(boolean wasOn, boolean on, boolean carInUse) {
+        if (on) {
+            isManuallyStoppedRecording = false;
+            startAutoRecordingCheck();
+        } else {
+            stopAutoRecordingCheck();
+        }
+        AfmcRecordingPolicy.Action action = AfmcRecordingPolicy.decide(wasOn, on, carInUse,
+                AfmcSentryMode.holdsCameras(), isRecording || isPreparingRecording || isAutoRecordingPending);
+        AppLog.d(TAG, "AFMC: record while driving switched " + (on ? "on" : "off") + " from LocalStore: " + action);
+        if (action == AfmcRecordingPolicy.Action.START) {
+            afmcSentryRecorder().startRecording();  // opens the cameras / comes forward briefly if needed
+        } else if (action == AfmcRecordingPolicy.Action.STOP && isRecording) {
+            wasRecordingBeforeScreenOff = false;
+            stopRecording();
+        }
+    }
+
     /**
      * AppsForMyCar: the driver touched EVCam's screen — leave it on screen. Touches only: the head
      * unit delivers key events of its own, which must not count as the driver using EVCam.
