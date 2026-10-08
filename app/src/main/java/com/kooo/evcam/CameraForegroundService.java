@@ -197,6 +197,14 @@ public class CameraForegroundService extends Service {
         ensureRemoteServicesStarted();
         startCameraRepairLoop();
 
+        // AppsForMyCar: sentry runs from here too, so it comes back after a head-unit restart or an
+        // app update (boot and keep-alive start this service) without anyone opening EVCam.
+        try {
+            AfmcSentryMode.get(this).start();
+        } catch (Throwable t) {
+            AppLog.e(TAG, "sentry start failed: " + t);
+        }
+
         // 从Intent获取通知内容，如果没有则使用默认内容
         String title = intent != null ? intent.getStringExtra("title") : null;
         String content = intent != null ? intent.getStringExtra("content") : null;

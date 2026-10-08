@@ -17,7 +17,8 @@ import java.util.Set;
  * cameras exist — lower EX2 trims have no 360° cameras and keep upstream's defaults.
  *
  * Camera2 IDs on the EX2: 4 front, 3 back, 5 left, 2 right (0 and 1: likely interior, unused).
- * The front camera's picture comes in mirrored, so it's un-mirrored here.
+ * The front camera's picture is NOT mirrored: no mirror flag is set (afmc.4 to afmc.12 set
+ * camera_front_mirror = true, which mirrored the live view; see applyFrontMirrorFix).
  *
  * Since 1.6.6-afmc.4 it also turns on upstream's "Start when the car starts" and "Record
  * automatically" settings once on every EX2, so EVCam records without being opened and keeps
@@ -27,6 +28,7 @@ final class AfmcGeelyEx2Defaults {
     private static final String TAG = "AfmcEx2";
     private static final String KEY_BACKGROUND_RECORDING_APPLIED = "afmc_background_recording_applied";
     private static final String KEY_USB_STORAGE_APPLIED = "afmc_usb_storage_applied";
+    private static final String KEY_FRONT_MIRROR_FIXED = "afmc_front_mirror_fixed";
 
     private AfmcGeelyEx2Defaults() {}
 
@@ -50,6 +52,7 @@ final class AfmcGeelyEx2Defaults {
     static void apply(Context context, SharedPreferences prefs) {
         applyBackgroundRecording(prefs);
         applyUsbStorage(prefs);
+        applyFrontMirrorFix(prefs);
         applyIfFresh(context, prefs);
     }
 
@@ -85,6 +88,30 @@ final class AfmcGeelyEx2Defaults {
         AppLog.d(TAG, "Geely EX2: start with the car + record automatically turned on");
     }
 
+    /**
+     * Our camera preset (afmc.4 to afmc.12) set camera_front_mirror = true. That flag only flips
+     * the live view (CustomLayoutManager), and the front camera's own picture already reads the
+     * right way round (recorded clips and sentry pictures, which ignore the flag, show shop signs
+     * readable, 2026-10-07/08), so the live view came out mirrored (owner, 2026-10-09).
+     * Once per install: clears the flag when it still looks like our preset (custom layout with the
+     * front on camera 4). An owner who set it on purpose can't be told apart; they can switch it
+     * back in the layout editor, and it is never changed again.
+     */
+    private static void applyFrontMirrorFix(SharedPreferences prefs) {
+        if (prefs.contains(KEY_FRONT_MIRROR_FIXED) || !isEx2HeadUnit()) return;
+        boolean ours = shouldClearFrontMirror(prefs.getBoolean("camera_front_mirror", false),
+                prefs.getString("car_model", null), prefs.getString("camera_front_id", null));
+        SharedPreferences.Editor e = prefs.edit().putBoolean(KEY_FRONT_MIRROR_FIXED, true);
+        if (ours) e.putBoolean("camera_front_mirror", false);
+        e.apply();
+        if (ours) AppLog.i(TAG, "Geely EX2: front camera live view un-mirrored (our old preset had mirrored it)");
+    }
+
+    /** Whether the saved front-mirror flag is the one our old preset wrote. Pure, for tests. */
+    static boolean shouldClearFrontMirror(boolean frontMirror, String carModel, String frontId) {
+        return frontMirror && "custom".equals(carModel) && "4".equals(frontId);
+    }
+
     private static void applyIfFresh(Context context, SharedPreferences prefs) {
         if (prefs.contains("car_model") || !isEx2HeadUnit() || !hasSurroundCameras(context)) return;
 
@@ -95,7 +122,7 @@ final class AfmcGeelyEx2Defaults {
                 .putString("camera_back_id", "3").putString("camera_back_name", "Back")
                 .putString("camera_left_id", "5").putString("camera_left_name", "Left")
                 .putString("camera_right_id", "2").putString("camera_right_name", "Right")
-                .putBoolean("camera_front_mirror", true)
+                .putBoolean("camera_front_mirror", false)
                 .putBoolean("recording_camera_front_enabled", true)
                 .putBoolean("recording_camera_back_enabled", true)
                 .putBoolean("recording_camera_left_enabled", true)
@@ -111,6 +138,8 @@ final class AfmcGeelyEx2Defaults {
             e.putInt("fullscreen_window_x_" + pos, 0).putInt("fullscreen_window_y_" + pos, 0)
                     .putInt("fullscreen_window_width_" + pos, 1280).putInt("fullscreen_window_height_" + pos, 645);
         }
+        // A fresh install needs no mirror fix.
+        e.putBoolean(KEY_FRONT_MIRROR_FIXED, true);
         e.apply();
         AppLog.d(TAG, "Geely EX2 camera defaults applied");
     }

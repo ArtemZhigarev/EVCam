@@ -36,6 +36,11 @@ import java.util.Locale;
  * It stops when the car is in use again; a recording it started itself is then stopped, unless
  * "Record automatically" is on (then recording simply carries on as usual).
  *
+ * "Left" is usage mode 1 or 0, or locked + camping (camping holds usage at 2): an unlocked car never
+ * arms. state() says what it is doing (armed / waiting / no_signals / off); state changes are logged
+ * ("sentry state: ...") and reported to LocalStore in the SET_SENTRY reply (AfmcSentryReceiver).
+ * CameraForegroundService starts it too, so it comes back by itself after a head-unit restart.
+ *
  * It never opens a camera of its own and never uses the interior cameras (Camera2 IDs 0 and 1):
  * pictures come from the outside cameras EVCam already has open. It runs only while the head unit
  * is awake; it does nothing to keep the car on (that is the car's own stay-on timer).
@@ -72,6 +77,7 @@ public final class AfmcSentryMode {
     private long lastShotMs = -1;
     private long lastRecordAttemptMs;
     private boolean startedRecording;
+    private volatile AfmcSentryPolicy.State lastState;
     private final Runnable tickRunnable = this::tick;
 
     private AfmcSentryMode(Context context) {
@@ -129,8 +135,28 @@ public final class AfmcSentryMode {
     public static void setEnabled(Context context, boolean on) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_ENABLED, on).apply();
         AppLog.d(TAG, "sentry mode switched " + (on ? "on" : "off"));
-        get(context).start();
-        get(context).checkSoon();
+        AfmcSentryMode s = get(context);
+        s.start();
+        if (on) {
+            s.usageReader.start();
+            s.usageReader.retryNow();
+        }
+        s.checkSoon();
+    }
+
+    /**
+     * What sentry is doing now (armed / waiting / no signals / off), from the latest readings.
+     * Safe from any thread.
+     */
+    public static AfmcSentryPolicy.State state(Context context) {
+        AfmcSentryMode s = get(context);
+        return AfmcSentryPolicy.state(isEnabled(context), active, s.effectiveUsage(SystemClock.elapsedRealtime()));
+    }
+
+    private Integer effectiveUsage(long now) {
+        return AfmcSentryPolicy.effectiveUsage(
+                AfmcSentryPolicy.freshUsage(usageReader.usage(), usageReader.readAtMs(), now),
+                usageReader.lock(), usageReader.camping());
     }
 
     public static void setIntervalMinutes(Context context, int minutes) {
@@ -180,9 +206,32 @@ public final class AfmcSentryMode {
         if (enabled) usageReader.start(); else usageReader.stop();
 
         long now = SystemClock.elapsedRealtime();
-        Integer usage = AfmcSentryPolicy.effectiveUsage(
-                AfmcSentryPolicy.freshUsage(usageReader.usage(), usageReader.readAtMs(), now),
-                usageReader.lock(), usageReader.camping());
+        Integer usage = effectiveUsage(now);
+        try {
+            act(enabled, usage, now);
+        } finally {
+            noteState(AfmcSentryPolicy.state(enabled, active, usage));
+        }
+    }
+
+    /** Logs when sentry's state changes, so the log says plainly why it is or isn't recording. */
+    private void noteState(AfmcSentryPolicy.State s) {
+        if (s == lastState) return;
+        // Right after starting, the first reading takes a second or two: not worth a "no signals" line.
+        if (s == AfmcSentryPolicy.State.NO_SIGNALS && usageReader.failedTries() == 0
+                && SystemClock.elapsedRealtime() - usageReader.startedAtMs() < 30_000L) return;
+        AfmcSentryPolicy.State before = lastState;
+        lastState = s;
+        if (before == null && s == AfmcSentryPolicy.State.OFF) return;
+        String why = "";
+        if (s == AfmcSentryPolicy.State.WAITING) {
+            why = " (usage mode " + usageReader.usage() + ", lock " + usageReader.lock()
+                    + ", camping " + usageReader.camping() + ")";
+        }
+        AppLog.i(TAG, "sentry state: " + s.wire + ": " + AfmcSentryPolicy.stateText(s) + why);
+    }
+
+    private void act(boolean enabled, Integer usage, long now) {
         switch (AfmcSentryPolicy.decide(enabled, usage, active)) {
             case START:
                 AppLog.d(TAG, "car left (usage mode " + usage + "): sentry on, pictures every "

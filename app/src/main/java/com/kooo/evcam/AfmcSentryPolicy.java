@@ -50,6 +50,57 @@ final class AfmcSentryPolicy {
 
     enum Action { START, STOP, NONE }
 
+    /**
+     * What sentry is doing, as reported to LocalStore (the wire name is the lower-case one):
+     * ARMED recording because the car is left; WAITING on, but the car is in use or unlocked;
+     * NO_SIGNALS on, but the car's signals can't be read, so it can't tell; OFF switched off.
+     */
+    enum State {
+        OFF("off"), ARMED("armed"), WAITING("waiting"), NO_SIGNALS("no_signals");
+
+        final String wire;
+
+        State(String wire) {
+            this.wire = wire;
+        }
+    }
+
+    /** [usage] as for decide(): the effective, fresh usage mode, or null when it isn't known. */
+    static State state(boolean enabled, boolean active, Integer usage) {
+        if (!enabled) return State.OFF;
+        if (active || usage != null && isLeft(usage)) return State.ARMED;
+        if (usage == null) return State.NO_SIGNALS;
+        return State.WAITING;
+    }
+
+    /** One line for the owner about [s]. */
+    static String stateText(State s) {
+        switch (s) {
+            case ARMED: return "Sentry armed: the car is left, recording";
+            case WAITING: return "Sentry waiting: it arms when the car is locked and left";
+            case NO_SIGNALS: return "Sentry is on but can't read the car's signals, so it can't arm; it keeps trying";
+            default: return "Sentry off";
+        }
+    }
+
+    /** First retry after a failed vehicle HAL connection, and the most it waits between tries. */
+    static final long RETRY_FIRST_MS = 5_000L;
+    static final long RETRY_MAX_MS = 60_000L;
+    /** While the vehicle HAL stays unreachable, the error is logged at most this often. */
+    static final long ERROR_LOG_EVERY_MS = 10 * 60_000L;
+
+    /** Wait before try number [failedTries] + 1 to reach the vehicle HAL: 5 s, doubling, capped at 1 min. */
+    static long retryDelayMs(int failedTries) {
+        if (failedTries <= 1) return RETRY_FIRST_MS;
+        long d = RETRY_FIRST_MS << Math.min(failedTries - 1, 20);
+        return Math.min(d, RETRY_MAX_MS);
+    }
+
+    /** Whether to log failed try number [failedTries]: the first one, then once every ERROR_LOG_EVERY_MS. */
+    static boolean shouldLogFailure(int failedTries, long nowMs, long lastLoggedMs) {
+        return failedTries <= 1 || lastLoggedMs <= 0 || nowMs - lastLoggedMs >= ERROR_LOG_EVERY_MS;
+    }
+
     /** The setting's value, or the default when it isn't one of the choices. */
     static int normalizeInterval(int minutes) {
         for (int c : INTERVAL_CHOICES_MIN) if (c == minutes) return minutes;
@@ -86,7 +137,6 @@ final class AfmcSentryPolicy {
         return usage == USAGE_LEFT || usage == USAGE_SLEEPING;
     }
 
-    /** The usage reading to act on: null when there is none or it is older than USAGE_STALE_MS. */
     /**
      * The usage mode sentry acts on. Camping mode keeps the car "in use" (2) even when the owner has
      * locked it and walked away (EX2 2026-10-07): locked + camping counts as left, so sentry records

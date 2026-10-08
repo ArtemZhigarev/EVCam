@@ -226,4 +226,62 @@ public class AfmcSentryPolicyTest {
         assertEquals(Integer.valueOf(13), AfmcSentryPolicy.effectiveUsage(13, 3, 1)); // driving is never left
         assertEquals(null, AfmcSentryPolicy.effectiveUsage(null, 3, 1));
     }
+
+    // ---------- state reported to LocalStore ----------
+
+    @Test
+    public void stateIsOffWhenSwitchedOff() {
+        assertEquals(AfmcSentryPolicy.State.OFF, AfmcSentryPolicy.state(false, false, 1));
+        assertEquals(AfmcSentryPolicy.State.OFF, AfmcSentryPolicy.state(false, true, null));
+    }
+
+    @Test
+    public void stateIsArmedWhileRecordingOrTheCarIsLeft() {
+        assertEquals(AfmcSentryPolicy.State.ARMED, AfmcSentryPolicy.state(true, true, 1));
+        assertEquals(AfmcSentryPolicy.State.ARMED, AfmcSentryPolicy.state(true, false, 0));
+        // Signals lost while armed: still recording, so still armed.
+        assertEquals(AfmcSentryPolicy.State.ARMED, AfmcSentryPolicy.state(true, true, null));
+    }
+
+    @Test
+    public void stateIsWaitingWhileTheCarIsInUseOrUnlocked() {
+        assertEquals(AfmcSentryPolicy.State.WAITING, AfmcSentryPolicy.state(true, false, 2));
+        assertEquals(AfmcSentryPolicy.State.WAITING, AfmcSentryPolicy.state(true, false, 13));
+        // 2026-10-08/09: camping on, car unlocked -> stays waiting (by design).
+        assertEquals(AfmcSentryPolicy.State.WAITING, AfmcSentryPolicy.state(true, false,
+                AfmcSentryPolicy.effectiveUsage(2, 1, 1)));
+        // Locked + camping counts as left.
+        assertEquals(AfmcSentryPolicy.State.ARMED, AfmcSentryPolicy.state(true, false,
+                AfmcSentryPolicy.effectiveUsage(2, 3, 1)));
+    }
+
+    @Test
+    public void stateIsNoSignalsWhenTheUsageModeIsUnknown() {
+        assertEquals(AfmcSentryPolicy.State.NO_SIGNALS, AfmcSentryPolicy.state(true, false, null));
+        assertEquals("no_signals", AfmcSentryPolicy.State.NO_SIGNALS.wire);
+        assertEquals("armed", AfmcSentryPolicy.State.ARMED.wire);
+        assertEquals("waiting", AfmcSentryPolicy.State.WAITING.wire);
+        assertEquals("off", AfmcSentryPolicy.State.OFF.wire);
+    }
+
+    // ---------- vehicle HAL retries ----------
+
+    @Test
+    public void retryBackoffDoublesFromFiveSecondsUpToAMinute() {
+        assertEquals(5_000L, AfmcSentryPolicy.retryDelayMs(0));
+        assertEquals(5_000L, AfmcSentryPolicy.retryDelayMs(1));
+        assertEquals(10_000L, AfmcSentryPolicy.retryDelayMs(2));
+        assertEquals(20_000L, AfmcSentryPolicy.retryDelayMs(3));
+        assertEquals(40_000L, AfmcSentryPolicy.retryDelayMs(4));
+        assertEquals(60_000L, AfmcSentryPolicy.retryDelayMs(5));
+        assertEquals(60_000L, AfmcSentryPolicy.retryDelayMs(1000));
+    }
+
+    @Test
+    public void failuresAreLoggedFirstThenEveryTenMinutes() {
+        assertTrue(AfmcSentryPolicy.shouldLogFailure(1, 1_000_000L, 999_000L));
+        assertTrue(AfmcSentryPolicy.shouldLogFailure(5, 1_000_000L, 0));
+        assertFalse(AfmcSentryPolicy.shouldLogFailure(5, 1_000_000L, 1_000_000L - 9 * MIN));
+        assertTrue(AfmcSentryPolicy.shouldLogFailure(5, 1_000_000L, 1_000_000L - 10 * MIN));
+    }
 }
