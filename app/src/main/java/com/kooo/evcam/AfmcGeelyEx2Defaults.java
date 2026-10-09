@@ -2,6 +2,7 @@ package com.kooo.evcam;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.os.Build;
 
@@ -17,6 +18,8 @@ import java.util.Set;
  * cameras exist — lower EX2 trims have no 360° cameras and keep upstream's defaults.
  *
  * Camera2 IDs on the EX2: 4 front, 3 back, 5 left, 2 right (0 and 1: likely interior, unused).
+ * A second head-unit variant (10 camera devices) has the right camera on ID 6 instead, and an ID 2
+ * that won't open: see chooseRightCamera (2026-10-09, same rule as LocalStore's CameraVariant).
  * The front camera's picture is NOT mirrored: no mirror flag is set (afmc.4 to afmc.12 set
  * camera_front_mirror = true, which mirrored the live view; see applyFrontMirrorFix).
  *
@@ -112,8 +115,59 @@ final class AfmcGeelyEx2Defaults {
         return frontMirror && "custom".equals(carModel) && "4".equals(frontId);
     }
 
+    /** The size of every EX2 outside camera. */
+    static final int OUTSIDE_W = 1280;
+    static final int OUTSIDE_H = 800;
+
+    /**
+     * The right-hand camera: "2" when ID 2 is an outside camera (1280x800), else "6" when ID 6 is,
+     * else the usual "2". Sizes are the cameras' pixel-array sizes, null when missing or unreadable.
+     * IDs 0 and 1 (likely interior driver-monitoring cameras) are never considered. Pure, for tests.
+     */
+    static String chooseRightCamera(int[] id2Size, int[] id6Size) {
+        if (isOutside(id2Size)) return "2";
+        if (isOutside(id6Size)) return "6";
+        return "2";
+    }
+
+    private static boolean isOutside(int[] size) {
+        return size != null && size.length == 2 && size[0] == OUTSIDE_W && size[1] == OUTSIDE_H;
+    }
+
+    /** Reads only the descriptions of IDs 2 and 6 (CameraCharacteristics); never opens a camera. */
+    static String detectRightCamera(Context context) {
+        int[] s2 = null, s6 = null;
+        int count = 0;
+        try {
+            CameraManager cm = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+            Set<String> ids = new HashSet<>(Arrays.asList(cm.getCameraIdList()));
+            count = ids.size();
+            s2 = ids.contains("2") ? pixelArraySize(cm, "2") : null;
+            s6 = ids.contains("6") ? pixelArraySize(cm, "6") : null;
+        } catch (Exception ignored) {
+        }
+        String right = chooseRightCamera(s2, s6);
+        AppLog.i(TAG, "Geely EX2: right camera = ID " + right + " (" + count + " cameras, ID 2 "
+                + sizeText(s2) + ", ID 6 " + sizeText(s6) + ")");
+        return right;
+    }
+
+    private static int[] pixelArraySize(CameraManager cm, String id) {
+        try {
+            android.util.Size s = cm.getCameraCharacteristics(id).get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE);
+            return s == null ? null : new int[]{s.getWidth(), s.getHeight()};
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static String sizeText(int[] s) {
+        return s == null ? "?" : s[0] + "x" + s[1];
+    }
+
     private static void applyIfFresh(Context context, SharedPreferences prefs) {
         if (prefs.contains("car_model") || !isEx2HeadUnit() || !hasSurroundCameras(context)) return;
+        String right = detectRightCamera(context);
 
         SharedPreferences.Editor e = prefs.edit()
                 .putString("car_model", "custom")
@@ -121,7 +175,7 @@ final class AfmcGeelyEx2Defaults {
                 .putString("camera_front_id", "4").putString("camera_front_name", "Front")
                 .putString("camera_back_id", "3").putString("camera_back_name", "Back")
                 .putString("camera_left_id", "5").putString("camera_left_name", "Left")
-                .putString("camera_right_id", "2").putString("camera_right_name", "Right")
+                .putString("camera_right_id", right).putString("camera_right_name", "Right")
                 .putBoolean("camera_front_mirror", false)
                 .putBoolean("recording_camera_front_enabled", true)
                 .putBoolean("recording_camera_back_enabled", true)
@@ -138,6 +192,11 @@ final class AfmcGeelyEx2Defaults {
             e.putInt("fullscreen_window_x_" + pos, 0).putInt("fullscreen_window_y_" + pos, 0)
                     .putInt("fullscreen_window_width_" + pos, 1280).putInt("fullscreen_window_height_" + pos, 645);
         }
+        // The owner's preset (2026-10-09): no recording with the screen off, 5 GB each for clips
+        // and pictures. Fresh installs only, and never over a value that is already there.
+        if (!prefs.contains("screen_off_recording")) e.putBoolean("screen_off_recording", false);
+        if (!prefs.contains("video_storage_limit_gb")) e.putInt("video_storage_limit_gb", 5);
+        if (!prefs.contains("photo_storage_limit_gb")) e.putInt("photo_storage_limit_gb", 5);
         // A fresh install needs no mirror fix.
         e.putBoolean(KEY_FRONT_MIRROR_FIXED, true);
         e.apply();
