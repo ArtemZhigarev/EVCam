@@ -32,6 +32,7 @@ final class AfmcGeelyEx2Defaults {
     private static final String KEY_BACKGROUND_RECORDING_APPLIED = "afmc_background_recording_applied";
     private static final String KEY_USB_STORAGE_APPLIED = "afmc_usb_storage_applied";
     private static final String KEY_FRONT_MIRROR_FIXED = "afmc_front_mirror_fixed";
+    private static final String KEY_HARDWARE_RECORDER_APPLIED = "afmc_hardware_recorder_applied";
 
     private AfmcGeelyEx2Defaults() {}
 
@@ -56,6 +57,7 @@ final class AfmcGeelyEx2Defaults {
         applyBackgroundRecording(prefs);
         applyUsbStorage(prefs);
         applyFrontMirrorFix(prefs);
+        applyHardwareRecorder(prefs);
         applyIfFresh(context, prefs);
     }
 
@@ -108,6 +110,26 @@ final class AfmcGeelyEx2Defaults {
         if (ours) e.putBoolean("camera_front_mirror", false);
         e.apply();
         if (ours) AppLog.i(TAG, "Geely EX2: front camera live view un-mirrored (our old preset had mirrored it)");
+    }
+
+    /**
+     * Record with MediaRecorder (each camera straight to the hardware encoder) instead of upstream's
+     * "auto", which picks the OpenGL + MediaCodec pipeline. On Test car 1 (2026-10-12) the OpenGL path
+     * for four cameras roughly doubled the head unit's load (1-min load 12.7 vs 6.4 with EVCam closed),
+     * made the car's 360 view flash dark and its occupant camera drop frames (~12 a minute vs ~1);
+     * MediaRecorder recorded all four cameras at load 8.6, EVCam ~10% CPU, ~5 a minute, no flashing.
+     * Once per install; an owner who later picks a mode in Settings keeps it.
+     */
+    private static void applyHardwareRecorder(SharedPreferences prefs) {
+        if (prefs.contains(KEY_HARDWARE_RECORDER_APPLIED) || !isEx2HeadUnit()) return;
+        String mode = hardwareRecorderMode(prefs.getString("recording_mode", null));
+        prefs.edit().putString("recording_mode", mode).putBoolean(KEY_HARDWARE_RECORDER_APPLIED, true).apply();
+        AppLog.i(TAG, "Geely EX2: recording mode " + mode + " (hardware encoder; the OpenGL pipeline overloads the head unit)");
+    }
+
+    /** The recording mode to use on the EX2: MediaRecorder unless the owner chose one other than "auto". Pure, for tests. */
+    static String hardwareRecorderMode(String current) {
+        return current == null || AppConfig.RECORDING_MODE_AUTO.equals(current) ? AppConfig.RECORDING_MODE_MEDIA_RECORDER : current;
     }
 
     /** Whether the saved front-mirror flag is the one our old preset wrote. Pure, for tests. */

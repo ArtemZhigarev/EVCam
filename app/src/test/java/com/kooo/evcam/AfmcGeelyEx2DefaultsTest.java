@@ -38,4 +38,12 @@ public class AfmcGeelyEx2DefaultsTest {
         assertEquals("2", AfmcGeelyEx2Defaults.chooseRightCamera(new int[]{3280, 2464}, new int[]{1920, 1080}));
         assertEquals("2", AfmcGeelyEx2Defaults.chooseRightCamera(new int[]{1280}, new int[0]));
     }
+
+    @Test
+    public void theEx2RecordsWithTheHardwareEncoderUnlessTheOwnerChoseAMode() {
+        assertEquals("media_recorder", AfmcGeelyEx2Defaults.hardwareRecorderMode(null));
+        assertEquals("media_recorder", AfmcGeelyEx2Defaults.hardwareRecorderMode("auto"));
+        assertEquals("codec", AfmcGeelyEx2Defaults.hardwareRecorderMode("codec"));
+        assertEquals("media_recorder", AfmcGeelyEx2Defaults.hardwareRecorderMode("media_recorder"));
+    }
 }
