@@ -101,6 +101,9 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 MainActivity activity = MainActivity.getInstance();
+                // Switched on from LocalStore: the owner is asking for recording, so a stop made by hand
+                // is over on every path (the screen's own path clears it too; this one did not, 2026-10-12).
+                if (on) AfmcManualStop.clear(app, "record while driving switched on from LocalStore");
                 if (activity != null) {
                     activity.afmcRecordWhileDrivingSwitched(wasOn, on, inUse);
                 } else if (AfmcRecordingPolicy.decide(wasOn, on, inUse, AfmcSentryMode.holdsCameras(), false)
