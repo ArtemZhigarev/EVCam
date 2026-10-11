@@ -6,6 +6,8 @@ import static com.kooo.evcam.AfmcRecordingPolicy.Action.NONE;
 import static com.kooo.evcam.AfmcRecordingPolicy.Action.START;
 import static com.kooo.evcam.AfmcRecordingPolicy.Action.STOP;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class AfmcRecordingPolicyTest {
 
@@ -46,5 +48,37 @@ public class AfmcRecordingPolicyTest {
         assertEquals("internal", AfmcRecordingPolicy.storage(true, false));
         assertEquals("internal", AfmcRecordingPolicy.storage(false, true));
         assertEquals("internal", AfmcRecordingPolicy.storage(false, false));
+    }
+
+    // ---------- once per drive (owner, 2026-10-11) ----------
+
+    private static final long H = 60 * 60_000L;
+    private static final long BOOT = 1_000_000_000L;
+
+    @Test
+    public void aStopByHandHoldsForTheRestOfTheDriveAcrossRelaunches() {
+        // EVCam relaunched 40 minutes later, same head-unit boot, car still in use: no restart.
+        assertTrue(AfmcRecordingPolicy.manualStopHolds(true, 0, 40 * 60_000L, BOOT, BOOT + 30_000L, false));
+        assertFalse(AfmcRecordingPolicy.manualStopHolds(false, 0, 1, BOOT, BOOT, false));
+    }
+
+    @Test
+    public void theNextDriveRecordsByItselfAgain() {
+        // the car was left or switched off since the stop
+        assertFalse(AfmcRecordingPolicy.manualStopHolds(true, 0, 60_000L, BOOT, BOOT, true));
+        // the head unit started again
+        assertFalse(AfmcRecordingPolicy.manualStopHolds(true, 0, 60_000L, BOOT, BOOT + 10 * 60_000L, false));
+        // safety net
+        assertFalse(AfmcRecordingPolicy.manualStopHolds(true, 0, 12 * H, BOOT, BOOT, false));
+        assertFalse("a clock that went back", AfmcRecordingPolicy.manualStopHolds(true, 5 * H, 0, BOOT, BOOT, false));
+    }
+
+    @Test
+    public void onlyLeftOrSleepingIsOutOfUse() {
+        assertTrue(AfmcRecordingPolicy.outOfUse(1));
+        assertTrue(AfmcRecordingPolicy.outOfUse(0));
+        assertFalse(AfmcRecordingPolicy.outOfUse(2));
+        assertFalse(AfmcRecordingPolicy.outOfUse(13));
+        assertFalse(AfmcRecordingPolicy.outOfUse(null));
     }
 }

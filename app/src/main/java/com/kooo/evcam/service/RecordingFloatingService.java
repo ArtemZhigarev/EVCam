@@ -448,6 +448,7 @@ public class RecordingFloatingService extends Service {
                 Intent intent = new Intent(this, MainActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                 intent.putExtra("auto_start_recording", true);
+                intent.putExtra("afmc_by_driver", true);  // AppsForMyCar: a tap, not an automatic start
                 startActivity(intent);
                 Toast.makeText(this, "Starting recording, please wait...", Toast.LENGTH_SHORT).show();
                 return;

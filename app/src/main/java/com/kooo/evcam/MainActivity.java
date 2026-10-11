@@ -459,6 +459,11 @@ public class MainActivity extends AppCompatActivity {
 
         // 检查是否是从录制悬浮按钮启动（需要自动开始录制）
         boolean autoStartRecording = getIntent().getBooleanExtra("auto_start_recording", false);
+        // AppsForMyCar: the floating record button is the driver asking for a recording: a stop by hand is over
+        if (autoStartRecording && getIntent().getBooleanExtra("afmc_by_driver", false)) {
+            isManuallyStoppedRecording = false;
+            AfmcManualStop.clear(this, "the driver started a recording from the floating button");
+        }
         if (autoStartRecording) {
             getIntent().removeExtra("auto_start_recording");
             AppLog.d(TAG, "从录制悬浮按钮启动，准备自动开始录制");
@@ -553,6 +558,11 @@ public class MainActivity extends AppCompatActivity {
 
         // 处理从录制悬浮按钮启动（需要自动开始录制）
         boolean autoStartRecording = intent.getBooleanExtra("auto_start_recording", false);
+        // AppsForMyCar: the floating record button is the driver asking for a recording: a stop by hand is over
+        if (autoStartRecording && intent.getBooleanExtra("afmc_by_driver", false)) {
+            isManuallyStoppedRecording = false;
+            AfmcManualStop.clear(this, "the driver started a recording from the floating button");
+        }
         if (autoStartRecording) {
             intent.removeExtra("auto_start_recording");
             AppLog.d(TAG, "从录制悬浮按钮启动（onNewIntent），准备自动开始录制");
@@ -3475,6 +3485,7 @@ public class MainActivity extends AppCompatActivity {
             AppLog.d(TAG, "未启用启动自动录制");
             return;
         }
+        if (afmcStoppedByHand("EVCam start")) return;  // AppsForMyCar: once per drive
         
         // 标记已触发
         autoStartRecordingTriggered = true;
@@ -3566,7 +3577,7 @@ public class MainActivity extends AppCompatActivity {
         }
         
         // 如果用户手动停止了录制，不自动恢复
-        if (isManuallyStoppedRecording) {
+        if (afmcStoppedByHand("once-a-minute check")) {  // AppsForMyCar: kept across relaunches, ends at the next drive
             // 每5分钟打印一次日志（避免日志刷屏）
             return;
         }
@@ -3646,8 +3657,8 @@ public class MainActivity extends AppCompatActivity {
      * cameras and resumes the recording), then afmcReturnToBackgroundWhenRecording() hides it again.
      */
     private void afmcWakeToRecord() {
-        if (isScreenOff || isRecording || !isInBackground || isManuallyStoppedRecording
-                || !appConfig.isAutoStartRecording()) {
+        if (isScreenOff || isRecording || !isInBackground || !appConfig.isAutoStartRecording()
+                || afmcStoppedByHand("wake")) {
             return;
         }
         AppLog.d(TAG, "AFMC: cameras not available in the background, bringing EVCam to the front to resume recording");
@@ -3710,6 +3721,17 @@ public class MainActivity extends AppCompatActivity {
         };
     }
 
+    /**
+     * AppsForMyCar: true while a recording the driver stopped by hand must not be started again by
+     * itself (AfmcManualStop: once per drive). Every automatic start asks this first. Main thread.
+     */
+    private boolean afmcStoppedByHand(String path) {
+        boolean held = AfmcManualStop.holds(this);
+        isManuallyStoppedRecording = held;
+        if (held && !path.startsWith("once-a-minute")) AppLog.d(TAG, "AFMC: not starting a recording by itself (" + path + "): stopped by hand this drive");
+        return held;
+    }
+
     /** AppsForMyCar: whether EVCam is recording right now (AfmcRecordingReceiver). Any thread. */
     public boolean afmcIsRecording() {
         return isRecording;
@@ -3724,6 +3746,7 @@ public class MainActivity extends AppCompatActivity {
     void afmcRecordWhileDrivingSwitched(boolean wasOn, boolean on, boolean carInUse) {
         if (on) {
             isManuallyStoppedRecording = false;
+            AfmcManualStop.clear(this, "record while driving switched on from LocalStore");
             startAutoRecordingCheck();
         } else {
             stopAutoRecordingCheck();
@@ -4083,7 +4106,8 @@ public class MainActivity extends AppCompatActivity {
                         cameraManager.openAllCameras();
                         // 延迟2秒后再次尝试恢复录制
                         screenStateHandler.postDelayed(() -> {
-                            if (!isScreenOff && !isRecording && cameraManager.hasConnectedCameras()) {
+                            if (!isScreenOff && !isRecording && cameraManager.hasConnectedCameras()
+                                    && !afmcStoppedByHand("screen on")) {  // AppsForMyCar
                                 AppLog.d(TAG, "摄像头已就绪，开始恢复录制");
                                 startRecording();
                                 Toast.makeText(MainActivity.this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
@@ -4098,6 +4122,7 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             
+            if (afmcStoppedByHand("screen on for 10 s")) return;  // AppsForMyCar
             AppLog.d(TAG, "亮屏已持续10秒，自动恢复录制");
             startRecording();
             runOnUiThread(() -> {
@@ -4123,6 +4148,7 @@ public class MainActivity extends AppCompatActivity {
             // 用户手动停止录制，设置手动停止标记
             // 这样自动录制检查不会自动恢复录制
             isManuallyStoppedRecording = true;
+            AfmcManualStop.mark(this);  // AppsForMyCar: lasts until the next drive, across relaunches
             AppLog.d(TAG, "用户手动停止录制，自动录制检查将不再自动恢复");
             
             // 用户手动停止录制，重置息屏录制标记
@@ -4133,6 +4159,7 @@ public class MainActivity extends AppCompatActivity {
             // 用户手动开始录制，重置手动停止标记
             // 这样后续如果录制异常停止，可以自动恢复
             isManuallyStoppedRecording = false;
+            AfmcManualStop.clear(this, "the driver started a recording");  // AppsForMyCar
             AppLog.d(TAG, "用户手动开始录制，自动录制检查已启用");
             startRecording();
         }
@@ -5223,7 +5250,8 @@ public class MainActivity extends AppCompatActivity {
                     if (appConfig.isAutoStartRecording()) {
                         AppLog.d(TAG, "启用了自动录制，从后台返回后将自动恢复录制");
                         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                            if (!isRecording && cameraManager != null && cameraManager.hasConnectedCameras()) {
+                            if (!isRecording && cameraManager != null && cameraManager.hasConnectedCameras()
+                                    && !afmcStoppedByHand("back from another app")) {  // AppsForMyCar
                                 AppLog.d(TAG, "自动恢复录制...");
                                 startRecording();
                                 Toast.makeText(this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
