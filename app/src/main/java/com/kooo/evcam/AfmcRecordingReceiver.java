@@ -24,18 +24,20 @@ import java.util.concurrent.TimeUnit;
  *   in:  org.ex2.evcam.SET_RECORDING        extras: requestId (String), enabled (boolean, optional:
  *                                            without it the request only reports the state)
  *   out: org.ex2.localstore.EVCAM_RECORDING extras: requestId, enabled (the saved setting),
- *                                            recordingNow (boolean), storage ("usb" | "internal"),
- *                                            error (String or null)
+ *                                            recordingNow (boolean), starting (boolean: switched on
+ *                                            and the recording is still starting), storage ("usb" |
+ *                                            "internal"), error (String or null)
  *
  * "In use" is the screen being on, which is how upstream decides too (it stops recording 10 s after
- * the screen goes off unless screen-off recording is on). When switching on, the reply waits up to
- * about 8 s for the recording to start, so recordingNow is true when it worked.
+ * the screen goes off unless screen-off recording is on). When switching on, the reply waits for the
+ * recording to start, so recordingNow is true when it worked; but it always goes out within
+ * AfmcRecordingPolicy.REPLY_BY_MS (7 s) of the request, well inside LocalStore's 12 s wait, and a
+ * recording still starting then is reported with starting = true.
  */
 public class AfmcRecordingReceiver extends BroadcastReceiver {
     public static final String ACTION = "org.ex2.evcam.SET_RECORDING";
     public static final String RESULT_ACTION = "org.ex2.localstore.EVCAM_RECORDING";
     private static final String TAG = "AfmcRecording";
-    private static final long START_WAIT_MS = 8_000L;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -56,6 +58,7 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
     }
 
     private static void handle(Context app, Intent intent) {
+        final long receivedAt = System.currentTimeMillis();
         String requestId = intent.getStringExtra("requestId");
         String error = null;
         boolean expectRecording = false;
@@ -67,14 +70,15 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
                 // Same call as the switch in EVCam's settings: saves it.
                 config.setAutoStartRecording(on);
                 boolean inUse = carInUse(app);
-                apply(app, wasOn, on, inUse);
+                apply(app, wasOn, on, inUse, receivedAt);
                 expectRecording = on && inUse && !AfmcSentryMode.holdsCameras();
             }
         } catch (Throwable t) {
             error = "Error: " + t.getMessage();
             AppLog.e(TAG, "record while driving switch failed: " + t);
         }
-        boolean recording = expectRecording ? waitForRecording() : recordingNow();
+        boolean recording = expectRecording ? waitForRecording(receivedAt) : recordingNow();
+        boolean starting = expectRecording && !recording && error == null;
         String storage;
         try {
             storage = AfmcRecordingPolicy.storage(config.isUsingExternalSdCard(), StorageHelper.hasExternalSdCard(app));
@@ -87,16 +91,19 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
                 .putExtra("requestId", requestId)
                 .putExtra("enabled", enabled)
                 .putExtra("recordingNow", recording)
+                .putExtra("starting", starting)
                 .putExtra("storage", storage)
                 .putExtra("error", error);
         app.sendBroadcast(out, AfmcSnapshotReceiver.PERMISSION);
         AppLog.d(TAG, (intent.hasExtra("enabled") ? "remote switch " : "remote query ") + requestId
                 + ": record while driving " + (enabled ? "on" : "off") + ", recording now " + recording
+                + (starting ? " (still starting)" : "")
+                + ", answered after " + (System.currentTimeMillis() - receivedAt) + " ms"
                 + ", to " + storage + (error != null ? ", " + error : ""));
     }
 
     /** Starts or stops a recording on EVCam's screen, or starts EVCam to record when it isn't running. */
-    private static void apply(Context app, boolean wasOn, boolean on, boolean inUse) throws InterruptedException {
+    private static void apply(Context app, boolean wasOn, boolean on, boolean inUse, long receivedAt) throws InterruptedException {
         CountDownLatch done = new CountDownLatch(1);
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
@@ -124,7 +131,10 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
                 done.countDown();
             }
         });
-        done.await(3, TimeUnit.SECONDS);
+        long wait = AfmcRecordingPolicy.remainingMs(receivedAt, System.currentTimeMillis(), AfmcRecordingPolicy.APPLY_WAIT_MS);
+        if (!done.await(wait, TimeUnit.MILLISECONDS)) {
+            AppLog.w(TAG, "record while driving: EVCam's screen is busy; the switch is saved and still being applied");
+        }
     }
 
     private static boolean carInUse(Context app) {
@@ -136,8 +146,9 @@ public class AfmcRecordingReceiver extends BroadcastReceiver {
         }
     }
 
-    private static boolean waitForRecording() {
-        long until = System.currentTimeMillis() + START_WAIT_MS;
+    private static boolean waitForRecording(long receivedAt) {
+        long now = System.currentTimeMillis();
+        long until = now + AfmcRecordingPolicy.remainingMs(receivedAt, now, AfmcRecordingPolicy.REPLY_BY_MS);
         boolean r = recordingNow();
         while (!r && System.currentTimeMillis() < until) {
             try {

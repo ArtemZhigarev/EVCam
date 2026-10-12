@@ -35,6 +35,23 @@ final class AfmcRecordingPolicy {
         return usbChosen && usbPresent ? STORAGE_USB : STORAGE_INTERNAL;
     }
 
+    /**
+     * The reply to LocalStore goes out at most this long after the request arrived, whatever is still
+     * pending. LocalStore waits 12 s (EvcamRecording.SWITCH_TIMEOUT_MS); before 2026-10-12 a switch
+     * could take up to 3 s to apply plus 8 s waiting for the recording, so a slow but successful switch
+     * reached LocalStore after it had given up and was shown as "needs a newer EVCam". A recording
+     * still starting at the deadline is reported as starting (the reply's "starting" extra).
+     */
+    static final long REPLY_BY_MS = 7_000L;
+    /** The longest the switch itself may take on EVCam's main thread before waiting for the recording. */
+    static final long APPLY_WAIT_MS = 3_000L;
+
+    /** How long to wait for something ([wantMs] at most) so the reply still goes out by [REPLY_BY_MS]. Never negative. */
+    static long remainingMs(long receivedAtMs, long nowMs, long wantMs) {
+        long left = REPLY_BY_MS - Math.max(0L, nowMs - receivedAtMs);
+        return Math.max(0L, Math.min(wantMs, left));
+    }
+
     /** A stop made by hand lasts at most this long, whatever else is known (a safety net). */
     static final long MANUAL_STOP_MAX_MS = 12 * 60 * 60_000L;
     /** Two boot times this close are the same boot (the wall clock drifts against the uptime). */

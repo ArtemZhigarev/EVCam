@@ -19,8 +19,10 @@ import java.util.ArrayList;
  *
  * Only apps signed with the AppsForMyCar key can call this (permission org.ex2.permission.CAR_SNAPSHOT,
  * protectionLevel signature). It runs EVCam's own take-picture on every active camera, waits for the
- * files (<photo dir>/<yyyyMMdd_HHmmss>_<front|back|left|right>.jpg) and replies to LocalStore with
- * their paths.
+ * files (<photo dir>/<yyyyMMdd_HHmmss>_<front|back|left|right>.jpg), moves them into their own folder
+ * (<photo dir>/AfmcSnapshots, see AfmcSnapshotFiles) and replies to LocalStore with their paths.
+ * LocalStore deletes them once it has its copies; what is left is deleted here, on the next snapshot,
+ * once it is a day old.
  *
  *   in:  org.ex2.evcam.TAKE_SNAPSHOT        extras: requestId (String)
  *   out: org.ex2.localstore.EVCAM_SNAPSHOT  extras: requestId, paths (String[]), error (String or null)
@@ -59,7 +61,7 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
             new Thread(() -> {
                 ArrayList<String> paths = new ArrayList<>();
                 try {
-                    File dir = StorageHelper.getPhotoDir(app);
+                    File dir = snapshotDir(app);
                     File[] clips = StorageHelper.getFinalVideoDir(app).listFiles();
                     for (String position : new String[]{"front", "back", "left", "right"}) {
                         for (File clip : AfmcSentryPolicy.clipsFor(clips, position)) {
@@ -97,6 +99,13 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
                     if (files != null) for (File f : files) if (f.length() > 0) paths.add(f.getAbsolutePath());
                     if (paths.size() >= 4 && i >= 6) break;
                 }
+                // Out of the photo folder, where they look like the owner's own photos, into ours.
+                File own = snapshotDir(app);
+                for (int i = 0; i < paths.size(); i++) {
+                    File from = new File(paths.get(i));
+                    File to = new File(own, from.getName());
+                    if (!to.equals(from) && from.renameTo(to)) paths.set(i, to.getAbsolutePath());
+                }
                 reply(app, requestId, paths.toArray(new String[0]), paths.isEmpty() ? "No pictures were saved" : null);
             } catch (Throwable t) {
                 reply(app, requestId, paths.toArray(new String[0]), "Error: " + t.getMessage());
@@ -104,6 +113,25 @@ public class AfmcSnapshotReceiver extends BroadcastReceiver {
                 pending.finish();
             }
         }).start();
+    }
+
+    /**
+     * The snapshots' own folder (created if needed), after deleting the snapshots in it that are over a
+     * day old: LocalStore deletes each one once it has its copy, so these are the ones it never took.
+     */
+    private static File snapshotDir(Context app) {
+        File photoDir = StorageHelper.getPhotoDir(app);
+        File dir = AfmcSnapshotFiles.dir(photoDir);
+        if (!dir.isDirectory() && !dir.mkdirs()) {
+            AppLog.w(TAG, "couldn't create " + dir + "; snapshots stay in the photo folder");
+            return photoDir;
+        }
+        int deleted = 0;
+        for (File f : AfmcSnapshotFiles.stale(dir.listFiles(), System.currentTimeMillis())) {
+            if (f.delete()) deleted++;
+        }
+        if (deleted > 0) AppLog.d(TAG, "deleted " + deleted + " snapshot picture(s) over a day old");
+        return dir;
     }
 
     /**

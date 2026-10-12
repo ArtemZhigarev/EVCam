@@ -50,6 +50,27 @@ public class AfmcRecordingPolicyTest {
         assertEquals("internal", AfmcRecordingPolicy.storage(false, false));
     }
 
+    // ---------- the reply goes out inside LocalStore's 12 s wait (2026-10-12 audit) ----------
+
+    @Test
+    public void theWorstCaseSwitchStillAnswersWellInsideLocalStoresWait() {
+        // apply takes its full 3 s, then the recording never starts: the reply goes out at 7 s.
+        long apply = AfmcRecordingPolicy.remainingMs(0, 0, AfmcRecordingPolicy.APPLY_WAIT_MS);
+        assertEquals(3_000L, apply);
+        long startWait = AfmcRecordingPolicy.remainingMs(0, apply, AfmcRecordingPolicy.REPLY_BY_MS);
+        assertEquals(4_000L, startWait);
+        assertTrue(apply + startWait <= 7_000L);
+        assertTrue("LocalStore waits 12 s", AfmcRecordingPolicy.REPLY_BY_MS + 2_000L < 12_000L);
+    }
+
+    @Test
+    public void nothingIsLeftToWaitPastTheDeadline() {
+        assertEquals(0L, AfmcRecordingPolicy.remainingMs(0, 9_000L, AfmcRecordingPolicy.REPLY_BY_MS));
+        assertEquals(0L, AfmcRecordingPolicy.remainingMs(0, 7_000L, AfmcRecordingPolicy.APPLY_WAIT_MS));
+        assertEquals("a clock that went back counts as no time spent",
+                AfmcRecordingPolicy.APPLY_WAIT_MS, AfmcRecordingPolicy.remainingMs(5_000L, 0, AfmcRecordingPolicy.APPLY_WAIT_MS));
+    }
+
     // ---------- once per drive (owner, 2026-10-11) ----------
 
     private static final long H = 60 * 60_000L;
