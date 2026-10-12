@@ -3457,7 +3457,7 @@ public class MainActivity extends AppCompatActivity {
             
             AppLog.d(TAG, "主题切换后自动恢复录制...");
             startRecording();
-            Toast.makeText(this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
+            afmcAutoToast("Recording resumed automatically");
             // 注意：shouldResumeRecordingAfterRecreate 在首次数据写入回调中重置，
             // 以便计时器使用保存的时间
         }, 2000);  // 延迟2秒
@@ -3506,7 +3506,7 @@ public class MainActivity extends AppCompatActivity {
             // 检查摄像头是否就绪
             if (cameraManager == null || !cameraManager.hasConnectedCameras()) {
                 AppLog.w(TAG, "摄像头未就绪，无法自动开始录制");
-                Toast.makeText(this, "Camera not ready, auto recording failed", Toast.LENGTH_SHORT).show();
+                afmcAutoToast("Camera not ready, auto recording failed");
                 return;
             }
             
@@ -3601,7 +3601,7 @@ public class MainActivity extends AppCompatActivity {
         // 满足所有条件，自动恢复录制
         AppLog.d(TAG, "自动录制检查：检测到未在录制，自动恢复录制...");
         startRecording();
-        Toast.makeText(this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
+        afmcAutoToast("Recording resumed automatically");
         afmcReturnToBackgroundWhenRecording();
     }
 
@@ -3730,6 +3730,22 @@ public class MainActivity extends AppCompatActivity {
         isManuallyStoppedRecording = held;
         if (held && !path.startsWith("once-a-minute")) AppLog.d(TAG, "AFMC: not starting a recording by itself (" + path + "): stopped by hand this drive");
         return held;
+    }
+
+    private long afmcLastAutoToastAt = 0;
+    private String afmcLastAutoToast = null;
+
+    /**
+     * AppsForMyCar: the automatic recording messages ("Recording resumed automatically" and the like)
+     * at most once a minute per message. A failing automatic restart showed one every few seconds
+     * (Test car 1, 2026-10-12). Main thread.
+     */
+    private void afmcAutoToast(String message) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (message.equals(afmcLastAutoToast) && now - afmcLastAutoToastAt < 60_000) return;
+        afmcLastAutoToast = message;
+        afmcLastAutoToastAt = now;
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
     /** AppsForMyCar: whether EVCam is recording right now (AfmcRecordingReceiver). Any thread. */
@@ -4110,7 +4126,7 @@ public class MainActivity extends AppCompatActivity {
                                     && !afmcStoppedByHand("screen on")) {  // AppsForMyCar
                                 AppLog.d(TAG, "摄像头已就绪，开始恢复录制");
                                 startRecording();
-                                Toast.makeText(MainActivity.this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
+                                afmcAutoToast("Recording resumed automatically");
                             } else {
                                 afmcWakeToRecord();  // AppsForMyCar
                             }
@@ -4126,7 +4142,7 @@ public class MainActivity extends AppCompatActivity {
             AppLog.d(TAG, "亮屏已持续10秒，自动恢复录制");
             startRecording();
             runOnUiThread(() -> {
-                Toast.makeText(MainActivity.this, "Screen on for 10 s, recording resumed", Toast.LENGTH_SHORT).show();
+                afmcAutoToast("Screen on for 10 s, recording resumed");
             });
         };
         
@@ -5254,7 +5270,7 @@ public class MainActivity extends AppCompatActivity {
                                     && !afmcStoppedByHand("back from another app")) {  // AppsForMyCar
                                 AppLog.d(TAG, "自动恢复录制...");
                                 startRecording();
-                                Toast.makeText(this, "Recording resumed automatically", Toast.LENGTH_SHORT).show();
+                                afmcAutoToast("Recording resumed automatically");
                                 afmcReturnToBackgroundWhenRecording();  // AppsForMyCar
                             }
                         }, 1500);  // 等待摄像头准备好

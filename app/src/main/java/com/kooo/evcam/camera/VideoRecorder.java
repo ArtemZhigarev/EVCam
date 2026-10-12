@@ -263,6 +263,35 @@ public class VideoRecorder {
     }
 
     /**
+     * AppsForMyCar: before a new recording, a recorder whose last stop never finished. Test car 1,
+     * 2026-10-12 13:00: the driver stopped and restarted recording within 2 s; camera 5 stayed
+     * "stopping" for good, every new start failed with "already recording", and the automatic
+     * restart retried every few seconds (previews flashing, a toast each time) until EVCam was exited.
+     * Waits up to [waitMs] for the stop to finish; if it doesn't, resets the recorder to idle (its
+     * MediaRecorder released) so the next start can prepare it. True when it is idle now.
+     */
+    public boolean afmcSettleBeforeStart(long waitMs) {
+        long until = android.os.SystemClock.elapsedRealtime() + waitMs;
+        while (isBusyForStart() && android.os.SystemClock.elapsedRealtime() < until) {
+            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+        }
+        if (!isBusyForStart()) return true;
+        AppLog.w(TAG, "AFMC: camera " + cameraId + " still " + state + " after " + waitMs + " ms: resetting it so recording can start");
+        cancelFileSizeCheck();
+        cancelFirstWriteTimeout();
+        releaseMediaRecorder();
+        isRecording.set(false);
+        waitingForSessionReconfiguration = false;
+        synchronized (stateLock) { state = RecordingState.IDLE; }
+        return true;
+    }
+
+    private boolean isBusyForStart() {
+        RecordingState s = state;
+        return isRecording.get() || s == RecordingState.STOPPING || s == RecordingState.SWITCHING_SEGMENT;
+    }
+
+    /**
      * 检查录制器是否已准备好（但未开始录制）
      * 用于判断是否可以启动初始录制
      */

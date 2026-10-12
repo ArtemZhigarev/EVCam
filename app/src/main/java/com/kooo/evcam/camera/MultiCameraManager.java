@@ -921,6 +921,7 @@ public class MultiCameraManager {
             String path = new File(saveDir, timestamp + "_" + key + ".mp4").getAbsolutePath();
             // 只准备 MediaRecorder，获取 Surface，使用预览的实际分辨率
             AppLog.d(TAG, "Preparing recording for " + key + " with size: " + previewSize.getWidth() + "x" + previewSize.getHeight());
+            recorder.afmcSettleBeforeStart(1000);   // AppsForMyCar: a stop that never finished must not block every new start
             if (!recorder.prepareRecording(path, previewSize.getWidth(), previewSize.getHeight())) {
                 prepareSuccess = false;
                 break;

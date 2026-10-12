@@ -33,6 +33,7 @@ final class AfmcGeelyEx2Defaults {
     private static final String KEY_USB_STORAGE_APPLIED = "afmc_usb_storage_applied";
     private static final String KEY_FRONT_MIRROR_FIXED = "afmc_front_mirror_fixed";
     private static final String KEY_HARDWARE_RECORDER_APPLIED = "afmc_hardware_recorder_applied";
+    private static final String KEY_DIRECT_USB_APPLIED = "afmc_direct_usb_applied";
 
     private AfmcGeelyEx2Defaults() {}
 
@@ -58,6 +59,7 @@ final class AfmcGeelyEx2Defaults {
         applyUsbStorage(prefs);
         applyFrontMirrorFix(prefs);
         applyHardwareRecorder(prefs);
+        applyDirectUsbWrite(prefs);
         applyIfFresh(context, prefs);
     }
 
@@ -125,6 +127,19 @@ final class AfmcGeelyEx2Defaults {
         String mode = hardwareRecorderMode(prefs.getString("recording_mode", null));
         prefs.edit().putString("recording_mode", mode).putBoolean(KEY_HARDWARE_RECORDER_APPLIED, true).apply();
         AppLog.i(TAG, "Geely EX2: recording mode " + mode + " (hardware encoder; the OpenGL pipeline overloads the head unit)");
+    }
+
+    /**
+     * Clips are written straight to the USB stick (owner, 2026-10-12). Upstream's "relay write"
+     * (relay_write_enabled, default on) records each clip into the head unit's own storage
+     * (app cache/temp_video) and copies it to the stick afterwards: twice the writing, and the car's
+     * small /data partition fills with clips in transit. Once per install; the owner can switch it
+     * back on in EVCam's settings.
+     */
+    private static void applyDirectUsbWrite(SharedPreferences prefs) {
+        if (prefs.contains(KEY_DIRECT_USB_APPLIED) || !isEx2HeadUnit()) return;
+        prefs.edit().putBoolean("relay_write_enabled", false).putBoolean(KEY_DIRECT_USB_APPLIED, true).apply();
+        AppLog.i(TAG, "Geely EX2: clips are written straight to the USB stick (relay write off)");
     }
 
     /** The recording mode to use on the EX2: MediaRecorder unless the owner chose one other than "auto". Pure, for tests. */
