@@ -262,28 +262,40 @@ public class VideoRecorder {
         return isRecording.get();
     }
 
+    /** AppsForMyCar: when this recorder entered STOPPING (elapsedRealtime), 0 when it isn't stopping. */
+    private volatile long afmcStoppingSince = 0;
+    /** A stop still running after this long is stuck (a normal stop takes well under a second). */
+    private static final long AFMC_STUCK_STOPPING_MS = 5000;
+
     /**
      * AppsForMyCar: before a new recording, a recorder whose last stop never finished. Test car 1,
      * 2026-10-12 13:00: the driver stopped and restarted recording within 2 s; camera 5 stayed
      * "stopping" for good, every new start failed with "already recording", and the automatic
-     * restart retried every few seconds (previews flashing, a toast each time) until EVCam was exited.
-     * Waits up to [waitMs] for the stop to finish; if it doesn't, resets the recorder to idle (its
-     * MediaRecorder released) so the next start can prepare it. True when it is idle now.
+     * restart retried every few seconds until EVCam was exited.
+     *
+     * Never waits (this runs on the UI thread). A recorder that has been STOPPING for longer than
+     * [AFMC_STUCK_STOPPING_MS] is stuck: it is reset to idle under the state lock (its MediaRecorder
+     * released) so the next start can prepare it. A stop still in progress, or a recorder that is
+     * really recording, is left alone: this start fails as before and the next automatic try (a few
+     * seconds later) gets it. True when the recorder is free now.
      */
-    public boolean afmcSettleBeforeStart(long waitMs) {
-        long until = android.os.SystemClock.elapsedRealtime() + waitMs;
-        while (isBusyForStart() && android.os.SystemClock.elapsedRealtime() < until) {
-            try { Thread.sleep(100); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+    public boolean afmcSettleBeforeStart() {
+        synchronized (stateLock) {
+            long since = afmcStoppingSince;
+            if (state == RecordingState.STOPPING && since > 0
+                    && android.os.SystemClock.elapsedRealtime() - since > AFMC_STUCK_STOPPING_MS) {
+                AppLog.w(TAG, "AFMC: camera " + cameraId + " stuck stopping for "
+                        + (android.os.SystemClock.elapsedRealtime() - since) + " ms: resetting it so recording can start");
+                cancelFileSizeCheck();
+                cancelFirstWriteTimeout();
+                releaseMediaRecorder();
+                isRecording.set(false);
+                waitingForSessionReconfiguration = false;
+                afmcStoppingSince = 0;
+                state = RecordingState.IDLE;
+            }
         }
-        if (!isBusyForStart()) return true;
-        AppLog.w(TAG, "AFMC: camera " + cameraId + " still " + state + " after " + waitMs + " ms: resetting it so recording can start");
-        cancelFileSizeCheck();
-        cancelFirstWriteTimeout();
-        releaseMediaRecorder();
-        isRecording.set(false);
-        waitingForSessionReconfiguration = false;
-        synchronized (stateLock) { state = RecordingState.IDLE; }
-        return true;
+        return !isBusyForStart();
     }
 
     private boolean isBusyForStart() {
@@ -966,6 +978,7 @@ public class VideoRecorder {
             
             // 进入停止状态
             state = RecordingState.STOPPING;
+            afmcStoppingSince = android.os.SystemClock.elapsedRealtime();   // AppsForMyCar: afmcSettleBeforeStart
         }
         
         // 取消分段定时器
