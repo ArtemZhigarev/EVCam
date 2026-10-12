@@ -46,6 +46,9 @@ public class AppConfig {
     // 存储清理配置
     private static final String KEY_VIDEO_STORAGE_LIMIT_GB = "video_storage_limit_gb";  // 视频存储限制（GB）
     private static final String KEY_PHOTO_STORAGE_LIMIT_GB = "photo_storage_limit_gb";  // 图片存储限制（GB）
+    // AppsForMyCar (afmc.23): the USB stick's own limits (AfmcStorageLimits); 0 = the whole stick
+    private static final String KEY_USB_VIDEO_STORAGE_LIMIT_GB = "usb_video_storage_limit_gb";
+    private static final String KEY_USB_PHOTO_STORAGE_LIMIT_GB = "usb_photo_storage_limit_gb";
     
     // 分段录制配置
     private static final String KEY_SEGMENT_DURATION_MINUTES = "segment_duration_minutes";  // 分段时长（分钟）
@@ -1463,6 +1466,26 @@ public class AppConfig {
         return prefs.getInt(KEY_PHOTO_STORAGE_LIMIT_GB, 10);
     }
     
+    /** AppsForMyCar: the USB stick's video limit in GB; 0 (the default) = the whole stick. */
+    public int getUsbVideoStorageLimitGb() {
+        return prefs.getInt(KEY_USB_VIDEO_STORAGE_LIMIT_GB, 0);
+    }
+
+    public void setUsbVideoStorageLimitGb(int limitGb) {
+        prefs.edit().putInt(KEY_USB_VIDEO_STORAGE_LIMIT_GB, limitGb).apply();
+        AppLog.d(TAG, "USB video storage limit: " + limitGb + " GB");
+    }
+
+    /** AppsForMyCar: the USB stick's picture limit in GB; 0 (the default) = the whole stick. */
+    public int getUsbPhotoStorageLimitGb() {
+        return prefs.getInt(KEY_USB_PHOTO_STORAGE_LIMIT_GB, 0);
+    }
+
+    public void setUsbPhotoStorageLimitGb(int limitGb) {
+        prefs.edit().putInt(KEY_USB_PHOTO_STORAGE_LIMIT_GB, limitGb).apply();
+        AppLog.d(TAG, "USB picture storage limit: " + limitGb + " GB");
+    }
+
     /**
      * 检查是否启用了存储清理功能
      * @return true 如果至少有一项存储限制设置大于0

@@ -731,7 +731,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Auto-delete oldest files when over the limit (blank or 0 = no limit)"
+                    android:text="Deletes the oldest files when over the limit. On the car, blank or 0 = no limit. On a USB stick, blank or 0 = the whole stick, always keeping room for new clips."
                     android:textColor="@color/text_secondary"
                     android:textSize="14sp"
                     android:layout_marginTop="4dp"
@@ -749,7 +749,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Video storage limit"
+                        android:text="Video, on the car"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp" />
 
@@ -789,13 +789,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Image storage limit"
+                        android:text="Pictures, on the car"
                         android:textColor="@color/text_primary"
                         android:textSize="16sp" />
 
@@ -822,6 +823,100 @@
 
                     <TextView
                         android:id="@+id/tv_photo_used_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- AppsForMyCar: the USB stick's own limits -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Video, on a USB stick"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp" />
+
+                    <EditText
+                        android:id="@+id/et_usb_video_storage_limit"
+                        android:layout_width="80dp"
+                        android:layout_height="44dp"
+                        android:inputType="number"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_primary"
+                        android:gravity="center"
+                        android:hint="all"
+                        android:background="@drawable/spinner_background"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=" GB"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:layout_marginStart="8dp" />
+
+                    <TextView
+                        android:id="@+id/tv_usb_video_used_size"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:layout_marginStart="8dp" />
+                </LinearLayout>
+
+                <!-- AppsForMyCar: USB pictures -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Pictures, on a USB stick"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp" />
+
+                    <EditText
+                        android:id="@+id/et_usb_photo_storage_limit"
+                        android:layout_width="80dp"
+                        android:layout_height="44dp"
+                        android:inputType="number"
+                        android:textSize="16sp"
+                        android:textColor="@color/text_primary"
+                        android:gravity="center"
+                        android:hint="all"
+                        android:background="@drawable/spinner_background"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=" GB"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:layout_marginStart="8dp" />
+
+                    <TextView
+                        android:id="@+id/tv_usb_photo_used_size"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text=""

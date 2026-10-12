@@ -123,6 +123,8 @@ public class SettingsFragment extends Fragment {
     private EditText photoStorageLimitEdit;
     private TextView videoUsedSizeText;
     private TextView photoUsedSizeText;
+    private TextView usbVideoUsedSizeText;
+    private TextView usbPhotoUsedSizeText;
     private boolean isInitializingStorageCleanup = false;
     
     // 录制摄像头选择配置相关
@@ -2035,12 +2037,17 @@ public class SettingsFragment extends Fragment {
     
     /**
      * 初始化存储清理配置
+     * AppsForMyCar (afmc.23): limits on the car and on a USB stick are separate (AfmcStorageLimits).
      */
     private void initStorageCleanupConfig(View view) {
         videoStorageLimitEdit = view.findViewById(R.id.et_video_storage_limit);
         photoStorageLimitEdit = view.findViewById(R.id.et_photo_storage_limit);
+        EditText usbVideoLimitEdit = view.findViewById(R.id.et_usb_video_storage_limit);
+        EditText usbPhotoLimitEdit = view.findViewById(R.id.et_usb_photo_storage_limit);
         videoUsedSizeText = view.findViewById(R.id.tv_video_used_size);
         photoUsedSizeText = view.findViewById(R.id.tv_photo_used_size);
+        usbVideoUsedSizeText = view.findViewById(R.id.tv_usb_video_used_size);
+        usbPhotoUsedSizeText = view.findViewById(R.id.tv_usb_photo_used_size);
         
         if (videoStorageLimitEdit == null || photoStorageLimitEdit == null || getContext() == null) {
             return;
@@ -2048,93 +2055,41 @@ public class SettingsFragment extends Fragment {
         
         isInitializingStorageCleanup = true;
         
-        // 加载当前设置
-        int videoLimit = appConfig.getVideoStorageLimitGb();
-        int photoLimit = appConfig.getPhotoStorageLimitGb();
-        
-        // 设置初始值（0显示为空）
-        if (videoLimit > 0) {
-            videoStorageLimitEdit.setText(String.valueOf(videoLimit));
-        } else {
-            videoStorageLimitEdit.setText("");
-        }
-        
-        if (photoLimit > 0) {
-            photoStorageLimitEdit.setText(String.valueOf(photoLimit));
-        } else {
-            photoStorageLimitEdit.setText("");
-        }
+        bindStorageLimit(videoStorageLimitEdit, appConfig.getVideoStorageLimitGb(), appConfig::setVideoStorageLimitGb, "Video on the car");
+        bindStorageLimit(photoStorageLimitEdit, appConfig.getPhotoStorageLimitGb(), appConfig::setPhotoStorageLimitGb, "Pictures on the car");
+        bindStorageLimit(usbVideoLimitEdit, appConfig.getUsbVideoStorageLimitGb(), appConfig::setUsbVideoStorageLimitGb, "Video on a USB stick");
+        bindStorageLimit(usbPhotoLimitEdit, appConfig.getUsbPhotoStorageLimitGb(), appConfig::setUsbPhotoStorageLimitGb, "Pictures on a USB stick");
         
         // 更新当前占用大小显示
         updateStorageUsedSizeDisplay();
         
-        // 添加文本变化监听器 - 视频
-        videoStorageLimitEdit.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (isInitializingStorageCleanup) {
-                    return;
-                }
-                
-                int limit = 0;
-                String text = s.toString().trim();
-                if (!text.isEmpty()) {
-                    try {
-                        limit = Integer.parseInt(text);
-                    } catch (NumberFormatException e) {
-                        // 忽略无效输入
-                    }
-                }
-                
-                appConfig.setVideoStorageLimitGb(limit);
-                AppLog.d("SettingsFragment", "视频存储限制已设置为: " + limit + " GB");
-                
-                // 通知 MainActivity 重启清理任务
-                notifyStorageCleanupConfigChanged();
-            }
-        });
-        
-        // 添加文本变化监听器 - 图片
-        photoStorageLimitEdit.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (isInitializingStorageCleanup) {
-                    return;
-                }
-                
-                int limit = 0;
-                String text = s.toString().trim();
-                if (!text.isEmpty()) {
-                    try {
-                        limit = Integer.parseInt(text);
-                    } catch (NumberFormatException e) {
-                        // 忽略无效输入
-                    }
-                }
-                
-                appConfig.setPhotoStorageLimitGb(limit);
-                AppLog.d("SettingsFragment", "图片存储限制已设置为: " + limit + " GB");
-                
-                // 通知 MainActivity 重启清理任务
-                notifyStorageCleanupConfigChanged();
-            }
-        });
-        
         // 延迟结束初始化标记
         videoStorageLimitEdit.post(() -> {
             isInitializingStorageCleanup = false;
+        });
+    }
+    
+    /** One limit field: 0 shows as blank; every change is saved and restarts the clean-up task. */
+    private void bindStorageLimit(EditText edit, int current, java.util.function.IntConsumer save, String name) {
+        if (edit == null) return;
+        edit.setText(current > 0 ? String.valueOf(current) : "");
+        edit.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (isInitializingStorageCleanup) {
+                    return;
+                }
+                int limit = AfmcStorageLimits.parseLimitGb(s.toString());
+                save.accept(limit);
+                AppLog.d("SettingsFragment", name + " limit set to " + limit + " GB");
+                notifyStorageCleanupConfigChanged();
+            }
         });
     }
     
@@ -2148,25 +2103,27 @@ public class SettingsFragment extends Fragment {
         
         // 在后台线程计算大小，避免阻塞UI
         new Thread(() -> {
+            if (getContext() == null) return;
             StorageCleanupManager cleanupManager = new StorageCleanupManager(getContext());
-            long videoSize = cleanupManager.getVideoUsedSize();
-            long photoSize = cleanupManager.getPhotoUsedSize();
-            
-            String videoSizeStr = "Used: " + StorageHelper.formatSize(videoSize);
-            String photoSizeStr = "Used: " + StorageHelper.formatSize(photoSize);
+            String video = usedText(cleanupManager.getUsedSize(false, true));
+            String photo = usedText(cleanupManager.getUsedSize(false, false));
+            String usbVideo = usedText(cleanupManager.getUsedSize(true, true));
+            String usbPhoto = usedText(cleanupManager.getUsedSize(true, false));
             
             // 回到主线程更新UI
             if (getActivity() != null) {
                 getActivity().runOnUiThread(() -> {
-                    if (videoUsedSizeText != null) {
-                        videoUsedSizeText.setText(videoSizeStr);
-                    }
-                    if (photoUsedSizeText != null) {
-                        photoUsedSizeText.setText(photoSizeStr);
-                    }
+                    if (videoUsedSizeText != null) videoUsedSizeText.setText(video);
+                    if (photoUsedSizeText != null) photoUsedSizeText.setText(photo);
+                    if (usbVideoUsedSizeText != null) usbVideoUsedSizeText.setText(usbVideo);
+                    if (usbPhotoUsedSizeText != null) usbPhotoUsedSizeText.setText(usbPhoto);
                 });
             }
         }).start();
+    }
+    
+    private static String usedText(long bytes) {
+        return bytes < 0 ? "No stick" : "Used: " + StorageHelper.formatSize(bytes);
     }
     
     /**

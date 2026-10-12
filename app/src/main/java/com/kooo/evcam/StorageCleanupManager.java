@@ -80,8 +80,17 @@ public class StorageCleanupManager {
             TimeUnit.MILLISECONDS
         );
         
+        // AppsForMyCar: the stick's free space every 5 minutes (AfmcStorageLimits)
+        scheduler.scheduleAtFixedRate(
+            this::afmcKeepStickRoom,
+            INITIAL_DELAY_MS + AfmcStorageLimits.STICK_CHECK_INTERVAL_MS,
+            AfmcStorageLimits.STICK_CHECK_INTERVAL_MS,
+            TimeUnit.MILLISECONDS
+        );
+        
         AppLog.d(TAG, "存储清理任务已启动：30秒后首次检测，之后每1小时检测一次");
-        AppLog.d(TAG, "视频限制: " + appConfig.getVideoStorageLimitGb() + " GB, 图片限制: " + appConfig.getPhotoStorageLimitGb() + " GB");
+        AppLog.d(TAG, "On the car: video " + appConfig.getVideoStorageLimitGb() + " GB, pictures " + appConfig.getPhotoStorageLimitGb()
+                + " GB; USB stick: video " + appConfig.getUsbVideoStorageLimitGb() + " GB, pictures " + appConfig.getUsbPhotoStorageLimitGb() + " GB (0 = no limit)");
     }
     
     /**
@@ -105,34 +114,68 @@ public class StorageCleanupManager {
         // 首先检测内部存储低空间情况（强制清理）
         performLowSpaceCleanupIfNeeded();
         
-        int videoLimitGb = appConfig.getVideoStorageLimitGb();
-        int photoLimitGb = appConfig.getPhotoStorageLimitGb();
-        
-        // 检测并清理视频
-        if (videoLimitGb > 0) {
-            CleanupResult videoResult = cleanupDirectory(
-                StorageHelper.getVideoDir(context),
-                videoLimitGb * GB_TO_BYTES,
-                "Video"
-            );
-            if (videoResult.deletedCount > 0) {
-                showCleanupNotification(videoResult, "Video");
-            }
+        // AppsForMyCar (afmc.23): the car's own folders always get the car's limits, a USB stick its own
+        // (AfmcStorageLimits). Upstream applied one limit to whichever drive it recorded to.
+        cleanupWithLimit(StorageHelper.getVideoDir(context, false), appConfig.getVideoStorageLimitGb(), "Video");
+        cleanupWithLimit(StorageHelper.getPhotoDir(context, false), appConfig.getPhotoStorageLimitGb(), "Images");
+        if (StorageHelper.getExternalSdCardRoot(context) != null) {
+            cleanupWithLimit(StorageHelper.getVideoDir(context, true), appConfig.getUsbVideoStorageLimitGb(), "USB video");
+            cleanupWithLimit(StorageHelper.getPhotoDir(context, true), appConfig.getUsbPhotoStorageLimitGb(), "USB images");
         }
-        
-        // 检测并清理图片
-        if (photoLimitGb > 0) {
-            CleanupResult photoResult = cleanupDirectory(
-                StorageHelper.getPhotoDir(context),
-                photoLimitGb * GB_TO_BYTES,
-                "Images"
-            );
-            if (photoResult.deletedCount > 0) {
-                showCleanupNotification(photoResult, "Images");
-            }
-        }
+        afmcKeepStickRoom();
         
         AppLog.d(TAG, "存储清理检测完成");
+    }
+    
+    private void cleanupWithLimit(File directory, int limitGb, String typeName) {
+        if (limitGb <= 0) return;
+        CleanupResult result = cleanupDirectory(directory, limitGb * GB_TO_BYTES, typeName);
+        if (result.deletedCount > 0) {
+            showCleanupNotification(result, typeName);
+        }
+    }
+    
+    /**
+     * AppsForMyCar: a USB stick always keeps some room for the next clips, whatever its limits: below
+     * AfmcStorageLimits.lowWaterBytes free, the oldest clips go up to targetFreeBytes. Only a StatFs
+     * when there is room. Never throws (it runs on the scheduler).
+     */
+    private void afmcKeepStickRoom() {
+        try {
+            if (StorageHelper.getExternalSdCardRoot(context) == null) return;
+            File videoDir = StorageHelper.getVideoDir(context, true);
+            long free = StorageHelper.getAvailableSpace(videoDir);
+            long total = StorageHelper.getTotalSpace(videoDir);
+            long need = AfmcStorageLimits.bytesToFree(free, total);
+            if (need <= 0) return;
+            AppLog.w(TAG, "USB stick short of room (" + StorageHelper.formatSize(free) + " free of "
+                    + StorageHelper.formatSize(total) + "): deleting the oldest clips");
+            // No toast: once a stick is full this is the normal rotation, every few minutes.
+            deleteOldest(videoDir, need, "USB video");
+        } catch (Throwable t) {
+            AppLog.e(TAG, "USB stick room check failed", t);
+        }
+    }
+    
+    /** Deletes the oldest files in [directory] until at least [bytes] are gone (or the folder is empty). */
+    private CleanupResult deleteOldest(File directory, long bytes, String typeName) {
+        CleanupResult result = new CleanupResult();
+        File[] files = directory == null ? null : directory.listFiles(File::isFile);
+        if (files == null || files.length == 0) return result;
+        List<File> sortedFiles = new ArrayList<>(Arrays.asList(files));
+        sortedFiles.sort(Comparator.comparingLong(File::lastModified));
+        for (File file : sortedFiles) {
+            if (result.deletedSize >= bytes) break;
+            long fileSize = file.length();
+            if (file.delete()) {
+                result.deletedSize += fileSize;
+                result.deletedCount++;
+            } else {
+                AppLog.w(TAG, "删除" + typeName + "失败: " + file.getName());
+            }
+        }
+        AppLog.d(TAG, typeName + ": deleted " + result.deletedCount + " oldest files, freed " + StorageHelper.formatSize(result.deletedSize));
+        return result;
     }
     
     /**
@@ -370,6 +413,12 @@ public class StorageCleanupManager {
      */
     public long getPhotoUsedSize() {
         return getDirectorySize(StorageHelper.getPhotoDir(context));
+    }
+    
+    /** AppsForMyCar: used size of the car's own (usb false) or the stick's folder; -1 when there is no stick. */
+    public long getUsedSize(boolean usb, boolean video) {
+        if (usb && StorageHelper.getExternalSdCardRoot(context) == null) return -1;
+        return getDirectorySize(video ? StorageHelper.getVideoDir(context, usb) : StorageHelper.getPhotoDir(context, usb));
     }
     
     /**
