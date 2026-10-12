@@ -591,9 +591,12 @@ public class MultiCameraManager {
                 for (Map.Entry<String, SingleCamera> entry : cameras.entrySet()) {
                     if (entry.getValue().getCameraId().equals(cameraId)) {
                         SingleCamera camera = entry.getValue();
-                        // 优先使用新的仅预览模式（保持预览不卡顿）
-                        boolean success = camera.switchToPreviewOnlyMode();
-                        AppLog.d(TAG, "Camera " + cameraId + " switched to preview-only mode: " + (success ? "success" : "fallback to pause"));
+                        // AppsForMyCar: drop the record target (also from any session rebuild that
+                        // happens mid-switch) and wait for the in-flight frames before the recorder
+                        // stops. Runs on the recorder's segment thread, so waiting is fine.
+                        camera.afmcDetachRecordTarget();
+                        camera.afmcAwaitRecordDrained(AFMC_RECORD_DRAIN_MS);
+                        AppLog.d(TAG, "Camera " + cameraId + " record target detached for segment switch");
                         break;
                     }
                 }
@@ -1736,6 +1739,11 @@ public class MultiCameraManager {
                     codecRecorders.clear();
                 }
 
+                // AppsForMyCar: take every encoder input surface out of its capture session and let
+                // the in-flight frames land BEFORE MediaRecorder.stop()/release() (media.codec abort,
+                // Test car 1 2026-10-12). Clearing used to happen 100 ms after the stop.
+                afmcDetachAllRecordTargets(keys);
+
                 // 停止 MediaRecorder 录制（带超时保护）
                 for (String key : keys) {
                     try {
@@ -1927,11 +1935,38 @@ public class MultiCameraManager {
      * 为重建停止录制（不清理 Watchdog 状态）
      * 使用 reset() 而不是 release()，以便保留 Handler/Thread 供重建时使用
      */
+    /** AppsForMyCar: upper bound on waiting for in-flight frames after the record target is dropped. */
+    private static final long AFMC_RECORD_DRAIN_MS = 400;
+
+    /**
+     * AppsForMyCar: detach every camera's MediaRecorder surface, then wait (bounded) for frames already
+     * in flight. Call off the main thread, before any MediaRecorder stop/reset/release.
+     */
+    private void afmcDetachAllRecordTargets(List<String> keys) {
+        List<SingleCamera> detached = new ArrayList<>();
+        for (String key : keys) {
+            SingleCamera camera = cameras.get(key);
+            if (camera == null) continue;
+            try {
+                camera.afmcDetachRecordTarget();
+                detached.add(camera);
+            } catch (Exception e) {
+                AppLog.e(TAG, "AFMC: detaching record target failed for " + key, e);
+            }
+        }
+        for (SingleCamera camera : detached) {
+            camera.afmcAwaitRecordDrained(AFMC_RECORD_DRAIN_MS);
+        }
+    }
+
     private void stopRecordingForRebuild() {
         AppLog.d(TAG, "Stopping recording for rebuild...");
         
         List<String> keys = getActiveCameraKeys();
-        
+
+        // AppsForMyCar: detach the encoder surfaces before reset() releases the MediaRecorders.
+        afmcDetachAllRecordTargets(keys);
+
         // 重置 MediaRecorder 录制器（保留 Handler/Thread）
         for (String key : keys) {
             VideoRecorder recorder = recorders.get(key);

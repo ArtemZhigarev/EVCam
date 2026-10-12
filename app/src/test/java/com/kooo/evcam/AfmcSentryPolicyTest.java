@@ -119,8 +119,8 @@ public class AfmcSentryPolicyTest {
         assertTrue(AfmcSentryPolicy.isOutsideCamera("back", "3"));
         assertTrue(AfmcSentryPolicy.isOutsideCamera("left", "5"));
         assertTrue(AfmcSentryPolicy.isOutsideCamera("right", "2"));
-        assertFalse(AfmcSentryPolicy.isOutsideCamera("front", "0"));
-        assertFalse(AfmcSentryPolicy.isOutsideCamera("left", "1"));
+        assertTrue("after a camera-service restart the outside cameras are 0-3", AfmcSentryPolicy.isOutsideCamera("right", "0"));
+        assertTrue(AfmcSentryPolicy.isOutsideCamera("back", "1"));
         assertFalse(AfmcSentryPolicy.isOutsideCamera("cabin", "6"));
         assertFalse(AfmcSentryPolicy.isOutsideCamera("front", null));
     }

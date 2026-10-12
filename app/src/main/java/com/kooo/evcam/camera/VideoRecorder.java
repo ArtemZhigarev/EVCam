@@ -266,6 +266,39 @@ public class VideoRecorder {
     private volatile long afmcStoppingSince = 0;
     /** A stop still running after this long is stuck (a normal stop takes well under a second). */
     private static final long AFMC_STUCK_STOPPING_MS = 5000;
+    /** AppsForMyCar: the MediaRecorder / STOPPING token the current stopRecording() owns. */
+    private MediaRecorder afmcStopOwned;
+    private long afmcStopToken;
+
+    /**
+     * AppsForMyCar: end of stopRecording(). Releases the stop's own MediaRecorder; clears the field and
+     * returns the state to IDLE only if no new recording took the recorder over meanwhile. True when it
+     * was still ours.
+     */
+    private boolean afmcReleaseOwned(MediaRecorder owned, long token) {
+        boolean ours;
+        synchronized (stateLock) {
+            ours = (afmcStoppingSince == token);
+            if (ours) {
+                if (mediaRecorder == owned) {
+                    mediaRecorder = null;
+                    cachedSurface = null;
+                }
+                afmcStoppingSince = 0;
+                state = RecordingState.IDLE;
+            }
+            afmcStopOwned = null;
+        }
+        if (owned != null && owned != mediaRecorder) {
+            try { owned.reset(); } catch (Exception e) {
+                AppLog.w(TAG, "Camera " + cameraId + " MediaRecorder.reset() failed: " + e.getMessage());
+            }
+            try { owned.release(); } catch (Exception e) {
+                AppLog.w(TAG, "Camera " + cameraId + " MediaRecorder.release() failed: " + e.getMessage());
+            }
+        }
+        return ours;
+    }
 
     /**
      * AppsForMyCar: before a new recording, a recorder whose last stop never finished. Test car 1,
@@ -288,7 +321,12 @@ public class VideoRecorder {
                         + (android.os.SystemClock.elapsedRealtime() - since) + " ms: resetting it so recording can start");
                 cancelFileSizeCheck();
                 cancelFirstWriteTimeout();
-                releaseMediaRecorder();
+                // Do NOT reset()/release() it here: its stop() is still blocked in the stop thread
+                // (concurrent native calls on one MediaRecorder), and that thread releases it when
+                // stop() returns (afmcReleaseOwned). Its input surface was already detached from the
+                // capture session before stop() was called (MultiCameraManager.afmcDetachAllRecordTargets).
+                mediaRecorder = null;
+                cachedSurface = null;
                 isRecording.set(false);
                 waitingForSessionReconfiguration = false;
                 afmcStoppingSince = 0;
@@ -979,7 +1017,14 @@ public class VideoRecorder {
             // 进入停止状态
             state = RecordingState.STOPPING;
             afmcStoppingSince = android.os.SystemClock.elapsedRealtime();   // AppsForMyCar: afmcSettleBeforeStart
+            // AppsForMyCar: the MediaRecorder this stop owns. afmcSettleBeforeStart may hand the
+            // recorder to a new recording while this stop is stuck; this stop must then finish and
+            // release ONLY its own instance and leave the new recording's state alone.
+            afmcStopOwned = mediaRecorder;
+            afmcStopToken = afmcStoppingSince;
         }
+        final MediaRecorder afmcOwned = afmcStopOwned;
+        final long afmcToken = afmcStopToken;
         
         // 取消分段定时器
         if (segmentRunnable != null && segmentHandler != null) {
@@ -1040,12 +1085,12 @@ public class VideoRecorder {
 
         List<String> deletedFiles = new ArrayList<>();
         try {
-            if (mediaRecorder != null) {
+            if (afmcOwned != null) {
                 // 如果文件太小（<10KB），说明 MediaRecorder 没有接收到帧，跳过 stop()
                 if (fileSizeBeforeStop < MIN_VALID_FILE_SIZE) {
                     AppLog.e(TAG, "Camera " + cameraId + " file size too small (" + fileSizeBeforeStop + " bytes < " + MIN_VALID_FILE_SIZE + "), MediaRecorder may not be receiving frames. Skipping stop().");
                 } else {
-                    mediaRecorder.stop();
+                    afmcOwned.stop();
                     AppLog.d(TAG, "Camera " + cameraId + " stopped recording: " + currentFilePath + " (total segments: " + (segmentIndex + 1) + ")");
                 }
             }
@@ -1071,17 +1116,15 @@ public class VideoRecorder {
                 }
             }
         } finally {
-            releaseMediaRecorder();
-            currentFilePath = null;
-            segmentIndex = 0;
-            
+            boolean afmcStillOurs = afmcReleaseOwned(afmcOwned, afmcToken);
             // 通知损坏文件被删除
             notifyCorruptedFilesDeleted(deletedFiles);
-            recordedFilePaths.clear();
-            
-            // 恢复到 IDLE 状态
-            synchronized (stateLock) {
-                state = RecordingState.IDLE;
+            if (afmcStillOurs) {
+                currentFilePath = null;
+                segmentIndex = 0;
+                recordedFilePaths.clear();
+            } else {
+                AppLog.w(TAG, "AFMC: camera " + cameraId + " late stop finished after a new recording took over; released only the old MediaRecorder");
             }
         }
     }

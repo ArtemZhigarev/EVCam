@@ -499,6 +499,53 @@ public class SingleCamera {
         AppLog.d(TAG, "Record surface cleared for camera " + cameraId);
     }
 
+    /** AppsForMyCar: preview-only results to wait for before the encoder may be stopped. */
+    private static final int AFMC_DRAIN_FRAMES = 2;
+    /** Set by switchToPreviewOnlyMode(); null when the record target was dropped some other way. */
+    private volatile java.util.concurrent.CountDownLatch afmcDrainLatch;
+
+    /**
+     * AppsForMyCar: take the MediaRecorder's input surface out of this camera BEFORE the recorder is
+     * stopped, reset or released. Test car 1, 2026-10-12: media.codec (omx@1.0-service) aborted six
+     * times with "Failed to clone native_handle in hidl_handle: Bad file descriptor" from
+     * GraphicBufferSource::onFrameAvailable called from BufferQueueProducer::queueBuffer: Camera2 queued a
+     * frame into an encoder input surface whose encoder was already stopping/released. The camera
+     * provider restarted afterwards with two cameras missing.
+     *
+     * Clears recordSurface (so any session rebuild from now on leaves the encoder out) and swaps the
+     * repeating request for a preview-only one (stopRepeating as fallback). Never blocks; pair it with
+     * afmcAwaitRecordDrained() on a non-camera thread before touching the MediaRecorder.
+     */
+    public void afmcDetachRecordTarget() {
+        afmcDrainLatch = null;
+        this.recordSurface = null;
+        if (captureSession == null) return;
+        switchToPreviewOnlyMode();   // sets afmcDrainLatch on success; falls back to stopRepeating
+    }
+
+    /**
+     * AppsForMyCar: wait (bounded) until the frames already in flight to the record surface have been
+     * delivered. Must not run on this camera's backgroundHandler thread (the results arrive there).
+     */
+    public void afmcAwaitRecordDrained(long timeoutMs) {
+        java.util.concurrent.CountDownLatch latch = afmcDrainLatch;
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            AppLog.w(TAG, "AFMC: camera " + cameraId + " record drain skipped on the main thread");
+            return;
+        }
+        try {
+            if (latch != null) {
+                if (!latch.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    AppLog.w(TAG, "AFMC: camera " + cameraId + " record drain timed out after " + timeoutMs + " ms");
+                }
+            } else if (captureSession != null) {
+                Thread.sleep(timeoutMs);   // stopRepeating fallback: no callback to wait on
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     /**
      * 暂停向录制 Surface 发送帧（旧方法，保留兼容性）
      * 注意：此方法会停止整个预览，导致画面卡顿，建议使用 switchToPreviewOnlyMode() 代替
@@ -561,7 +608,25 @@ public class SingleCamera {
             }
             
             // 替换当前的重复请求（预览继续，但不再向录制 Surface 发送帧）
-            captureSession.setRepeatingRequest(previewOnlyBuilder.build(), null, backgroundHandler);
+            // AppsForMyCar: count the first preview-only results. Results arrive in frame order, so once
+            // they are in, every earlier in-flight request (the ones still targeting the encoder's input
+            // surface) has completed and returned its buffers. See afmcAwaitRecordDrained().
+            final java.util.concurrent.CountDownLatch drained =
+                    new java.util.concurrent.CountDownLatch(AFMC_DRAIN_FRAMES);
+            afmcDrainLatch = drained;
+            captureSession.setRepeatingRequest(previewOnlyBuilder.build(),
+                    new CameraCaptureSession.CaptureCallback() {
+                        @Override
+                        public void onCaptureCompleted(@NonNull CameraCaptureSession s,
+                                @NonNull CaptureRequest r, @NonNull TotalCaptureResult result) {
+                            drained.countDown();
+                        }
+                        @Override
+                        public void onCaptureFailed(@NonNull CameraCaptureSession s,
+                                @NonNull CaptureRequest r, @NonNull android.hardware.camera2.CaptureFailure f) {
+                            drained.countDown();
+                        }
+                    }, backgroundHandler);
             AppLog.d(TAG, "Camera " + cameraId + " switched to preview-only mode (preview continues, recording paused)");
             return true;
             
@@ -811,6 +876,11 @@ public class SingleCamera {
             AppLog.d(TAG, "Camera " + cameraId + " already opening, skipping duplicate openCamera");
             return;
         }
+        // AppsForMyCar: never a camera that isn't an outside one (numbers change, see AfmcCameraGuard).
+        if (com.kooo.evcam.AfmcCameraGuard.refuses(cameraManager, cameraId)) {
+            shouldReconnect = false;
+            return;
+        }
         isOpening = true;
         
         synchronized (reconnectLock) {
@@ -1050,6 +1120,11 @@ public class SingleCamera {
                         handler.postDelayed(() -> {
                             synchronized (reconnectLock) {
                                 try {
+                                    if (com.kooo.evcam.AfmcCameraGuard.refuses(cameraManager, cameraId)) {
+                                        shouldReconnect = false;
+                                        isReconnecting = false;
+                                        return;
+                                    }
                                     cameraManager.openCamera(cameraId, stateCallback, handler);
                                 } catch (CameraAccessException e) {
                                     AppLog.e(TAG, "Failed to reconnect camera " + cameraId + ": " + e.getMessage());
@@ -2860,6 +2935,10 @@ public class SingleCamera {
                                 return;
                             }
                             
+                            if (com.kooo.evcam.AfmcCameraGuard.refuses(cameraManager, cameraId)) {
+                                shouldReconnect = false;
+                                return;
+                            }
                             cameraManager.openCamera(cameraId, stateCallback, backgroundHandler);
                             AppLog.d(TAG, "Camera " + cameraId + " force reopen initiated");
                         } catch (CameraAccessException e) {

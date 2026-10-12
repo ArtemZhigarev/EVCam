@@ -194,13 +194,14 @@ final class AfmcSentryPolicy {
     }
 
     /**
-     * The cameras sentry may use: the four outside positions only, and never Camera2 IDs 0 and 1
-     * (the EX2's driver-monitoring and cabin cameras), whatever the camera setup says.
+     * The cameras sentry may use: the four outside positions only. Not by Camera2 ID: after the car's
+     * camera service restarts the outside cameras are 0-3 (Test car 1, 2026-10-12); EVCam never opens a
+     * camera that isn't an outside one in the first place (AfmcCameraGuard checks its size).
      */
     static boolean isOutsideCamera(String position, String cameraId) {
         boolean outsidePosition = "front".equals(position) || "back".equals(position)
                 || "left".equals(position) || "right".equals(position);
-        return outsidePosition && cameraId != null && !"0".equals(cameraId) && !"1".equals(cameraId);
+        return outsidePosition && cameraId != null;
     }
 
     /** Free space below which sentry starts deleting: 1.5 GB, or 10% of a drive smaller than 15 GB. */
