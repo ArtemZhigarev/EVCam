@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AppsForMyCar: the Glass look by night (see values/afmc_theme.xml). -->
+<resources>
+    <color name="afmc_glass_bg">#FF0E1117</color>
+    <color name="afmc_glass_surface">#FF1C1C1E</color>
+    <color name="afmc_glass_fill">#FF2C2C2E</color>
+    <color name="afmc_glass_text">#FFF5F5F7</color>
+    <color name="afmc_glass_muted">#FFA1A1A6</color>
+    <color name="afmc_glass_accent">#FF0A84FF</color>
+</resources>

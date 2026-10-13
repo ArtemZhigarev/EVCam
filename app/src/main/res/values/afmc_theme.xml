@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AppsForMyCar: the Glass look (AfmcTheme), used when LocalStore's Themes card says "glass". Night in values-night. -->
+<resources>
+    <color name="afmc_glass_bg">#FFEEF1F6</color>
+    <color name="afmc_glass_surface">#FFFFFFFF</color>
+    <color name="afmc_glass_fill">#FFE9E9EE</color>
+    <color name="afmc_glass_text">#FF1C1C1E</color>
+    <color name="afmc_glass_muted">#FF5E5E63</color>
+    <color name="afmc_glass_accent">#FF007AFF</color>
+
+    <item name="afmc_theme_styled" type="id" />
+
+    <!-- Applied over the screen's own theme before it is built: the accent only (no window attributes,
+         so EVCam's transparent start-up screen stays transparent). -->
+    <style name="AfmcGlassOverlay">
+        <item name="colorPrimary">@color/afmc_glass_accent</item>
+        <item name="colorSecondary">@color/afmc_glass_accent</item>
+        <item name="colorAccent">@color/afmc_glass_accent</item>
+        <item name="android:colorAccent">@color/afmc_glass_accent</item>
+    </style>
+</resources>

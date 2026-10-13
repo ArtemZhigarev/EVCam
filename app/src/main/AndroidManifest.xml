@@ -53,6 +53,8 @@
          没有这条，副屏选了"EVCC 仪表投屏"时 ContentResolver.query 会拿不到数据。 -->
     <queries>
         <provider android:authorities="com.kooo.evcc.displays" />
+        <!-- AppsForMyCar: the look picked in LocalStore (AfmcTheme). -->
+        <provider android:authorities="org.ex2.localstore.theme" />
     </queries>
 
     <!-- AppsForMyCar: only apps signed with our key (LocalStore) may ask EVCam for snapshots. -->
@@ -79,6 +81,12 @@
             android:authorities="${applicationId}.keepalive"
             android:exported="false"
             android:initOrder="2147483647" />
+
+        <!-- AppsForMyCar: draws EVCam in the look picked in LocalStore (AfmcTheme); starts with the process. -->
+        <provider
+            android:name=".AfmcTheme$Init"
+            android:authorities="${applicationId}.afmctheme"
+            android:exported="false" />
 
         <!-- FileProvider for sharing video files -->
         <provider
