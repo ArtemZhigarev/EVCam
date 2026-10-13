@@ -29,8 +29,8 @@ android {
         applicationId = "org.ex2.evcam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 77024
-        versionName = "1.6.6-afmc.24"
+        versionCode = 77025
+        versionName = "1.6.6-afmc.25"
 
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

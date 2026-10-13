@@ -1,6 +1,8 @@
 package com.kooo.evcam;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -38,5 +40,13 @@ public class AfmcStorageLimitsTest {
         assertEquals(0, AfmcStorageLimits.parseLimitGb("abc"));
         assertEquals(0, AfmcStorageLimits.parseLimitGb("99999999999"));
         assertEquals(40, AfmcStorageLimits.parseLimitGb(" 40"));
+    }
+
+    @Test
+    public void aClipStillBeingWrittenIsNeverDeleted() {
+        long now = 1_000_000_000L;
+        assertFalse(AfmcStorageLimits.oldEnoughToDelete(now - 30_000L, now));
+        assertFalse(AfmcStorageLimits.oldEnoughToDelete(now - AfmcStorageLimits.ACTIVE_CLIP_MS, now));
+        assertTrue(AfmcStorageLimits.oldEnoughToDelete(now - AfmcStorageLimits.ACTIVE_CLIP_MS - 1, now));
     }
 }

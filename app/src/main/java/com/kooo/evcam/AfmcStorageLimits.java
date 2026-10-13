@@ -2,6 +2,7 @@ package com.kooo.evcam;
 
 /**
  * AppsForMyCar fork (afmc.23): separate storage limits for the head unit's own storage and a USB stick.
+ * afmc.25: the low-water room check covers the car's own storage too, and never deletes a clip still being written.
  *
  * Upstream has one video and one picture limit, applied to whichever drive EVCam records to. A stick
  * is usually far bigger than the car's storage, and LocalStore moves clips left on the car to the
@@ -35,6 +36,13 @@ public final class AfmcStorageLimits {
     static long bytesToFree(long freeBytes, long totalBytes) {
         if (freeBytes < 0 || totalBytes <= 0 || freeBytes >= lowWaterBytes(totalBytes)) return 0;
         return targetFreeBytes(totalBytes) - freeBytes;
+    }
+
+    /** A clip touched in the last this-many ms may still be being written: never deleted by the room checks. */
+    static final long ACTIVE_CLIP_MS = 2 * 60 * 1000L;
+
+    static boolean oldEnoughToDelete(long lastModified, long now) {
+        return now - lastModified > ACTIVE_CLIP_MS;
     }
 
     /** A limit typed in the settings: blank, 0 or anything unreadable is 0 (no limit). */

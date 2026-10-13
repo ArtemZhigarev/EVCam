@@ -136,24 +136,31 @@ public class StorageCleanupManager {
     }
     
     /**
-     * AppsForMyCar: a USB stick always keeps some room for the next clips, whatever its limits: below
-     * AfmcStorageLimits.lowWaterBytes free, the oldest clips go up to targetFreeBytes. Only a StatFs
-     * when there is room. Never throws (it runs on the scheduler).
+     * AppsForMyCar: a USB stick, and the car's own storage, always keep some room for the next clips,
+     * whatever the limits: below AfmcStorageLimits.lowWaterBytes free, the oldest clips go up to
+     * targetFreeBytes. The car's own storage too since afmc.25 (Test car 1, 2026-10-13: the stick wasn't
+     * mounted, EVCam recorded to the car instead, the car filled to 0 B and no clip was saved for an
+     * hour). Only a StatFs when there is room. Never throws (it runs on the scheduler).
      */
     private void afmcKeepStickRoom() {
+        keepRoom(true, "USB stick", "USB video");
+        keepRoom(false, "Car storage", "Video");
+    }
+
+    private void keepRoom(boolean usb, String what, String typeName) {
         try {
-            if (StorageHelper.getExternalSdCardRoot(context) == null) return;
-            File videoDir = StorageHelper.getVideoDir(context, true);
+            if (usb && StorageHelper.getExternalSdCardRoot(context) == null) return;
+            File videoDir = StorageHelper.getVideoDir(context, usb);
             long free = StorageHelper.getAvailableSpace(videoDir);
             long total = StorageHelper.getTotalSpace(videoDir);
             long need = AfmcStorageLimits.bytesToFree(free, total);
             if (need <= 0) return;
-            AppLog.w(TAG, "USB stick short of room (" + StorageHelper.formatSize(free) + " free of "
+            AppLog.w(TAG, what + " short of room (" + StorageHelper.formatSize(free) + " free of "
                     + StorageHelper.formatSize(total) + "): deleting the oldest clips");
-            // No toast: once a stick is full this is the normal rotation, every few minutes.
-            deleteOldest(videoDir, need, "USB video");
+            // No toast: once a drive is full this is the normal rotation, every few minutes.
+            deleteOldest(videoDir, need, typeName);
         } catch (Throwable t) {
-            AppLog.e(TAG, "USB stick room check failed", t);
+            AppLog.e(TAG, what + " room check failed", t);
         }
     }
     
@@ -164,8 +171,11 @@ public class StorageCleanupManager {
         if (files == null || files.length == 0) return result;
         List<File> sortedFiles = new ArrayList<>(Arrays.asList(files));
         sortedFiles.sort(Comparator.comparingLong(File::lastModified));
+        long now = System.currentTimeMillis();
         for (File file : sortedFiles) {
             if (result.deletedSize >= bytes) break;
+            // Never a clip that may still be being written (the newest segments).
+            if (!AfmcStorageLimits.oldEnoughToDelete(file.lastModified(), now)) continue;
             long fileSize = file.length();
             if (file.delete()) {
                 result.deletedSize += fileSize;
